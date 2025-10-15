@@ -1,0 +1,125 @@
+CREATE TABLE User (
+    userID INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    passwordHash VARCHAR(255) NOT NULL,
+    bio TEXT,
+    profilePic VARCHAR(255),
+    handle VARCHAR(50) UNIQUE,
+    email VARCHAR(100) UNIQUE,
+    firstName VARCHAR(50),
+    lastName VARCHAR(50),
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+
+CREATE TABLE Camera (
+    cameraID INT AUTO_INCREMENT PRIMARY KEY,
+    brand VARCHAR(50) NOT NULL,
+    model VARCHAR(50) NOT NULL,
+    sensorType VARCHAR(50),
+    releaseYear YEAR,
+    cameraType VARCHAR(50)
+);
+
+CREATE TABLE Lens (
+    lensID INT AUTO_INCREMENT PRIMARY KEY,
+    brand VARCHAR(50) NOT NULL,
+    model VARCHAR(50) NOT NULL,
+    focalLength_min FLOAT,
+    focalLength_max FLOAT,
+    apertureMax FLOAT,
+    apertureMin FLOAT,
+    lensType VARCHAR(50)
+);
+
+CREATE TABLE UserLens (
+    userLensID INT AUTO_INCREMENT PRIMARY KEY,
+    serialNum VARCHAR(100),
+    purchaseDate DATE,
+    nickname VARCHAR(50),
+    isActive BOOLEAN DEFAULT TRUE,
+    userID INT,
+    lensID INT,
+    FOREIGN KEY (userID) REFERENCES User(userID) ON DELETE CASCADE,
+    FOREIGN KEY (lensID) REFERENCES Lens(lensID) ON DELETE CASCADE
+);
+
+CREATE TABLE Post (
+    postID INT AUTO_INCREMENT PRIMARY KEY,
+    locationID INT,
+    capturedAt DATETIME,
+    uploadedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    caption TEXT,
+    visibility ENUM('public', 'private', 'friends') DEFAULT 'public',
+    userID INT,
+    FOREIGN KEY (userID) REFERENCES User(userID) ON DELETE CASCADE
+);
+
+CREATE TABLE Photo (
+    photoID INT AUTO_INCREMENT PRIMARY KEY,
+    url VARCHAR(255) NOT NULL,
+    width INT,
+    height INT,
+    fileSize BIGINT,
+    exif_data JSON,
+    postID INT,
+    cameraID INT,
+    lensID INT,
+    user_cameraID INT,
+    user_lensID INT,
+    FOREIGN KEY (postID) REFERENCES Post(postID) ON DELETE CASCADE,
+    FOREIGN KEY (cameraID) REFERENCES Camera(cameraID) ON DELETE SET NULL,
+    FOREIGN KEY (lensID) REFERENCES Lens(lensID) ON DELETE SET NULL,
+    FOREIGN KEY (user_cameraID) REFERENCES User(userID) ON DELETE SET NULL,
+    FOREIGN KEY (user_lensID) REFERENCES UserLens(userLensID) ON DELETE SET NULL
+);
+
+CREATE TABLE Tag (
+    tagID INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) UNIQUE NOT NULL
+);
+
+CREATE TABLE PhotoTag (
+    photoID INT,
+    tagID INT,
+    PRIMARY KEY(photoID, tagID),
+    FOREIGN KEY (photoID) REFERENCES Photo(photoID) ON DELETE CASCADE,
+    FOREIGN KEY (tagID) REFERENCES Tag(tagID) ON DELETE CASCADE
+);
+
+CREATE TABLE Collection (
+    collectionID INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    isPublic BOOLEAN DEFAULT TRUE,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    userID INT,
+    FOREIGN KEY (userID) REFERENCES User(userID) ON DELETE CASCADE
+);
+
+CREATE TABLE Follow (
+    followerID INT AUTO_INCREMENT PRIMARY KEY,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    userID INT,
+    FOREIGN KEY (userID) REFERENCES User(userID) ON DELETE CASCADE
+);
+
+CREATE TABLE Comment (
+    commentID INT AUTO_INCREMENT PRIMARY KEY,
+    content TEXT NOT NULL,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    postID INT,
+    userID INT,
+    user_CommentID INT,
+    FOREIGN KEY (postID) REFERENCES Post(postID) ON DELETE CASCADE,
+    FOREIGN KEY (userID) REFERENCES User(userID) ON DELETE CASCADE,
+    FOREIGN KEY (user_CommentID) REFERENCES User(userID) ON DELETE SET NULL
+);
+
+CREATE TABLE `Like` (
+    likeID INT AUTO_INCREMENT PRIMARY KEY,
+    capturedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    postID INT,
+    userID INT,
+    FOREIGN KEY (postID) REFERENCES Post(postID) ON DELETE CASCADE,
+    FOREIGN KEY (userID) REFERENCES User(userID) ON DELETE CASCADE
+);
