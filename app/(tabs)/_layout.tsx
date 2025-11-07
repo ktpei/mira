@@ -30,7 +30,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Feed',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+          tabBarIcon: ({ color }) => <TabBarIcon name="home" color={color} />,
           headerRight: () => (
             <Link href="/modal" asChild>
               <Pressable>
@@ -48,31 +48,31 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="map"
+        name="search"
         options={{
-          title: 'Map',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+          title: 'Search',
+          tabBarIcon: ({ color }) => <TabBarIcon name="search" color={color} />,
         }}
       />
       <Tabs.Screen
         name="create"
         options={{
           title: 'Create',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+          tabBarIcon: ({ color }) => <TabBarIcon name="plus-circle" color={color} />,
         }}
       />
       <Tabs.Screen
-        name="gallery"
+        name="map"
         options={{
-          title: 'Gallery',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+          title: 'Map',
+          tabBarIcon: ({ color }) => <TabBarIcon name="map-marker" color={color} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+          tabBarIcon: ({ color }) => <TabBarIcon name="user" color={color} />,
         }}
       />
     </Tabs>
