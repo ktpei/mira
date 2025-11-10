@@ -101,7 +101,7 @@ export async function testSupabaseConnection() {
   try {
     // Try to query a table (this will fail if tables don't exist, but that's OK for testing connection)
     const { data, error } = await supabase
-      .from('Post')
+      .from('posts')
       .select('count')
       .limit(1);
 

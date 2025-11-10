@@ -1,9 +1,11 @@
 import { Text, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
+import { executeSQLFunction } from '@/lib/supabase';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   ScrollView,
   StyleSheet,
@@ -12,37 +14,55 @@ import {
 } from 'react-native';
 
 type Visibility = 'public' | 'private' | 'friends';
-
 export default function CreateScreen() {
   const [caption, setCaption] = useState('');
   const [visibility, setVisibility] = useState<Visibility>('public');
-  const [location, setLocation] = useState('');
+  const [locationId, setLocationId] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(false);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
-  const handleCreatePost = () => {
+  const handleCreatePost = async () => {
     if (!caption.trim()) {
       Alert.alert('Error', 'Please enter a caption');
       return;
     }
 
-    // TODO: Integrate with backend/database
-    const postData = {
-      caption: caption.trim(),
-      visibility,
-      location: location.trim() || null,
-      capturedAt: new Date().toISOString(),
-    };
+    setIsLoading(true);
 
-    Alert.alert(
-      'Post Created', 
-      `Caption: ${postData.caption}\nVisibility: ${postData.visibility}\nLocation: ${postData.location || 'None'}`
-    );
+    try {
+      const { data, error } = await executeSQLFunction('create_post', {
+        p_user_id: 1,
+        p_caption: caption.trim() || null,
+        p_location_id: locationId ? parseInt(locationId, 10) : null,
+        p_captured_at: new Date().toISOString(),
+        p_visibility: visibility,
+      });
 
-    // Reset form
-    setCaption('');
-    setLocation('');
-    setVisibility('public');
+      if (error) {
+        console.error('Error creating post:', error);
+        Alert.alert(
+          'Error',
+          error.message || 'Failed to create post. Please try again.'
+        );
+        return;
+      }
+
+      if (data && data.length > 0) {
+        Alert.alert('Success', 'Post created successfully!');
+        // Reset form
+        setCaption('');
+        setLocationId('');
+        setVisibility('public');
+      } else {
+        Alert.alert('Error', 'Post creation failed. Please try again.');
+      }
+    } catch (err: any) {
+      console.error('Unexpected error:', err);
+      Alert.alert('Error', err.message || 'An unexpected error occurred');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const visibilityOptions: { value: Visibility; label: string; icon: string }[] = [
@@ -110,30 +130,40 @@ export default function CreateScreen() {
           ))}
         </View>
 
-        <Text style={[styles.label, { color: colors.text }]}>Location (Optional)</Text>
+        <Text style={[styles.label, { color: colors.text }]}>Location ID (Optional)</Text>
         <TextInput
           style={[
             styles.textInput,
+            styles.locationInput,
             {
               backgroundColor: colors.secondaryBackground,
               color: colors.text,
               borderColor: colors.border
             }
           ]}
-          placeholder="Add location"
+          placeholder="Enter location ID"
           placeholderTextColor={colors.tabIconDefault}
-          value={location}
-          onChangeText={setLocation}
+          value={locationId}
+          onChangeText={setLocationId}
+          keyboardType="numeric"
         />
 
         <TouchableOpacity
           style={[
             styles.createButton,
-            { backgroundColor: colors.tint }
+            { 
+              backgroundColor: isLoading ? colors.tabIconDefault : colors.tint,
+              opacity: isLoading ? 0.6 : 1
+            }
           ]}
           onPress={handleCreatePost}
+          disabled={isLoading}
         >
-          <Text style={styles.createButtonText}>Create Post</Text>
+          {isLoading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.createButtonText}>Create Post</Text>
+          )}
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -163,6 +193,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     minHeight: 100,
     textAlignVertical: 'top',
+  },
+  locationInput: {
+    minHeight: 50,
   },
   visibilityContainer: {
     flexDirection: 'row',
