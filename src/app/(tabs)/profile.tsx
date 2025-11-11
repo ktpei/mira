@@ -1,8 +1,11 @@
 import Colors from '@/constants/Colors';
 import { Text, View } from '@/src/components/Themed';
 import { useColorScheme } from '@/src/components/useColorScheme';
+import { useAuth } from '@/src/contexts/AuthContext';
+import { signOut } from '@/src/server/auth';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Alert, Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 
 const { width } = Dimensions.get('window');
 const POST_SIZE = (width - 4) / 3; // 3 columns with 2px gaps
@@ -11,6 +14,30 @@ export default function ProfileScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const colors = Colors[colorScheme ?? 'light'];
+  const { user } = useAuth();
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            const { error } = await signOut();
+            if (error) {
+              Alert.alert('Error', error.message);
+            } else {
+              router.push('/screens/login');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   // Mock data - replace with real data later
   const profileData = {
@@ -68,16 +95,34 @@ export default function ProfileScreen() {
           <Text style={[styles.username, { color: colors.text }]}>
             {profileData.username}
           </Text>
-          <TouchableOpacity 
-            style={[styles.editButton, { 
-              backgroundColor: colors.secondaryBackground,
-              borderColor: colors.border
-            }]}
-          >
-            <Text style={[styles.editButtonText, { color: colors.text }]}>
-              Edit profile
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.buttonRow}>
+            <TouchableOpacity 
+              style={[styles.editButton, { 
+                backgroundColor: colors.secondaryBackground,
+                borderColor: colors.border,
+                flex: 1,
+                marginRight: 8,
+              }]}
+            >
+              <Text style={[styles.editButtonText, { color: colors.text }]}>
+                Edit profile
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.signOutButton, { 
+                backgroundColor: colors.secondaryBackground,
+                borderColor: colors.border,
+                flex: 1,
+                marginLeft: 8,
+              }]}
+              onPress={handleSignOut}
+            >
+              <FontAwesome name="sign-out" size={16} color={colors.text} />
+              <Text style={[styles.editButtonText, { color: colors.text, marginLeft: 6 }]}>
+                Sign Out
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Bio Section */}
@@ -169,6 +214,19 @@ const styles = StyleSheet.create({
   },
   usernameSection: {
     marginBottom: 12,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    width: '100%',
+  },
+  signOutButton: {
+    borderRadius: 6,
+    borderWidth: 1,
+    paddingVertical: 6,
+    paddingHorizontal: 0,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
   username: {
     fontSize: 14,

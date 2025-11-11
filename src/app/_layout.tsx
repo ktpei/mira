@@ -8,6 +8,7 @@ import 'react-native-reanimated';
 
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/src/components/useColorScheme';
+import { AuthProvider } from '@/src/contexts/AuthContext';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -77,12 +78,20 @@ function RootLayoutNav() {
   };
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? darkTheme : lightTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="screens" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-      </Stack>
-    </ThemeProvider>
+    <AuthProvider>
+      <ThemeProvider value={colorScheme === 'dark' ? darkTheme : lightTheme}>
+        <Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="screens" options={{ headerShown: false }} />
+          <Stack.Screen 
+            name="screens/login" 
+            options={{ 
+              presentation: 'modal',
+              headerShown: false,
+            }} 
+          />
+        </Stack>
+      </ThemeProvider>
+    </AuthProvider>
   );
 }
