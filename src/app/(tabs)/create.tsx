@@ -1,7 +1,7 @@
-import { Text, View } from '@/components/Themed';
-import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
-import { executeSQLFunction } from '@/lib/supabase';
+import { Text, View } from '@/src/components/Themed';
+import { useColorScheme } from '@/src/components/useColorScheme';
+import { executeSQLFunction } from '@/src/server/supabase';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useState } from 'react';
 import {
@@ -20,7 +20,7 @@ export default function CreateScreen() {
   const [locationId, setLocationId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const colors = Colors[gitcolorScheme ?? 'light'];
 
   const handleCreatePost = async () => {
     if (!caption.trim()) {

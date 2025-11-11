@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Alert, StyleSheet, TouchableOpacity } from 'react-native';
 
-import EditScreenInfo from '@/components/EditScreenInfo';
-import { Text, View } from '@/components/Themed';
-import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
-import { testSupabaseConnection } from '@/lib/testSupabase';
+import EditScreenInfo from '@/src/components/EditScreenInfo';
+import { Text, View } from '@/src/components/Themed';
+import { useColorScheme } from '@/src/components/useColorScheme';
+import { testSupabaseConnection } from '@/src/server/testSupabase';
 
 export default function FeedScreen() {
   const [isTesting, setIsTesting] = useState(false);
