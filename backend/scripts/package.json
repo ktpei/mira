@@ -1,0 +1,23 @@
+{
+  "name": "backend-scripts",
+  "version": "1.0.0",
+  "description": "Backend scripts for image metadata extraction",
+  "main": "extractImageMetadata.js",
+  "scripts": {
+    "extract-metadata": "node extractImageMetadata.js"
+  },
+  "keywords": [
+    "image",
+    "metadata",
+    "exif",
+    "extraction"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "exifr": "^7.1.3",
+    "sharp": "^0.33.0"
+  },
+  "devDependencies": {}
+}
+

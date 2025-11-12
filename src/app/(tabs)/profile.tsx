@@ -1,8 +1,8 @@
-import PostFeedItem, { PostFeedItemProps } from '@/components/PostFeedItem';
-import { Text, View } from '@/components/Themed';
-import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 import { executeSQLFunction } from '@/lib/supabase';
+import PostFeedItem, { PostFeedItemProps } from '@/src/components/PostFeedItem';
+import { Text, View } from '@/src/components/Themed';
+import { useColorScheme } from '@/src/components/useColorScheme';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Image, StyleSheet, TouchableOpacity } from 'react-native';
 
