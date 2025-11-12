@@ -1,136 +1,232 @@
+import PostFeedItem, { PostFeedItemProps } from '@/components/PostFeedItem';
 import { Text, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { executeSQLFunction } from '@/lib/supabase';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, Image, StyleSheet, TouchableOpacity } from 'react-native';
 
-const { width } = Dimensions.get('window');
-const POST_SIZE = (width - 4) / 3; // 3 columns with 2px gaps
+// Mock current user ID - replace with actual auth later
+const CURRENT_USER_ID = 1;
+
+interface PostData {
+  out_post_id: number;
+  caption: string | null;
+  captured_at: string;
+  uploaded_at: string;
+  photo_urls: string[];
+  like_count: number;
+  comment_count: number;
+  is_liked_by_user: boolean;
+  visibility: string;
+}
 
 export default function ProfileScreen() {
   const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
   const colors = Colors[colorScheme ?? 'light'];
+  const [posts, setPosts] = useState<PostFeedItemProps[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data - replace with real data later
+  // Mock profile data - replace with real data later
   const profileData = {
+    user_id: CURRENT_USER_ID,
     username: 'username',
     name: 'Full Name',
     bio: 'This is a bio description\n📍 Location\n🔗 link.com',
+    profile_pic: 'https://via.placeholder.com/100',
     posts: 42,
     followers: 1234,
     following: 567,
-    postsGrid: Array.from({ length: 9 }, (_, i) => i), // Mock posts
+  };
+
+  // Fetch posts from Supabase
+  const fetchPosts = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Call the PostgreSQL function
+      const { data, error: rpcError } = await executeSQLFunction<PostData[]>(
+        'get_user_posts1',
+        { 
+          p_profile_user_id: CURRENT_USER_ID,
+          p_current_user_id: CURRENT_USER_ID,
+          p_limit: 20,
+          p_offset: 0
+        }
+      );
+
+      if (rpcError) {
+        console.error('Error fetching posts:', rpcError);
+        setError(rpcError.message);
+        setLoading(false);
+        return;
+      }
+
+      if (data) {
+        // Map the database response to PostFeedItemProps format
+        const mappedPosts: PostFeedItemProps[] = data.map((post) => ({
+          post_id: post.out_post_id,
+          caption: post.caption,
+          uploaded_at: post.uploaded_at,
+          captured_at: post.captured_at,
+          user_id: CURRENT_USER_ID,
+          username: profileData.username, // TODO: Get from user query
+          profile_pic: profileData.profile_pic, // TODO: Get from user query
+          handle: null, // TODO: Get from user query
+          photo_url: post.photo_urls && post.photo_urls.length > 0 
+            ? post.photo_urls[0] 
+            : 'https://via.placeholder.com/400x400', // Fallback if no photos
+          photo_width: null, // Not in response, will default to 1:1
+          photo_height: null, // Not in response, will default to 1:1
+          like_count: post.like_count,
+          comment_count: post.comment_count,
+          is_liked: post.is_liked_by_user,
+        }));
+
+        // Sort by uploaded_at descending (newest first)
+        const sortedPosts = mappedPosts.sort(
+          (a, b) => new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime()
+        );
+
+        setPosts(sortedPosts);
+      }
+    } catch (err: any) {
+      console.error('Error fetching posts:', err);
+      setError(err.message || 'Failed to fetch posts');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPosts();
+  }, []);
+
+  const renderPost = ({ item }: { item: PostFeedItemProps }) => (
+    <PostFeedItem {...item} />
+  );
+
+  const renderHeader = () => (
+    <View style={styles.header}>
+      {/* Profile Picture and Stats Row */}
+      <View style={styles.topSection}>
+        {/* Profile Picture */}
+        <View style={styles.profilePictureContainer}>
+          <Image
+            source={{ uri: profileData.profile_pic }}
+            style={[styles.profilePicture, { borderColor: colors.border }]}
+          />
+        </View>
+
+        {/* Stats */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statItem}>
+            <Text style={[styles.statNumber, { color: colors.text }]}>
+              {posts.length}
+            </Text>
+            <Text style={[styles.statLabel, { color: colors.text }]}>posts</Text>
+          </View>
+          <TouchableOpacity style={styles.statItem}>
+            <Text style={[styles.statNumber, { color: colors.text }]}>
+              {profileData.followers}
+            </Text>
+            <Text style={[styles.statLabel, { color: colors.text }]}>followers</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.statItem}>
+            <Text style={[styles.statNumber, { color: colors.text }]}>
+              {profileData.following}
+            </Text>
+            <Text style={[styles.statLabel, { color: colors.text }]}>following</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Username and Edit Profile Button */}
+      <View style={styles.usernameSection}>
+        <Text style={[styles.username, { color: colors.text }]}>
+          {profileData.username}
+        </Text>
+        <TouchableOpacity 
+          style={[styles.editButton, { 
+            backgroundColor: colors.secondaryBackground,
+            borderColor: colors.border
+          }]}
+        >
+          <Text style={[styles.editButtonText, { color: colors.text }]}>
+            Edit profile
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Bio Section */}
+      <View style={styles.bioSection}>
+        <Text style={[styles.name, { color: colors.text }]}>
+          {profileData.name}
+        </Text>
+        <Text style={[styles.bio, { color: colors.text }]}>
+          {profileData.bio}
+        </Text>
+      </View>
+    </View>
+  );
+
+  const renderEmpty = () => {
+    if (loading) {
+      return (
+        <View style={styles.emptyContainer}>
+          <ActivityIndicator size="large" color={colors.tint} />
+          <Text style={[styles.emptyText, { color: colors.tabIconDefault, marginTop: 16 }]}>
+            Loading posts...
+          </Text>
+        </View>
+      );
+    }
+
+    if (error) {
+      return (
+        <View style={styles.emptyContainer}>
+          <Text style={[styles.emptyText, { color: '#ff3040' }]}>
+            Error: {error}
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={[styles.emptyText, { color: colors.tabIconDefault }]}>
+          No posts yet
+        </Text>
+      </View>
+    );
   };
 
   return (
-    <ScrollView 
-      style={[styles.container, { backgroundColor: colors.background }]}
+    <FlatList
+      data={posts}
+      renderItem={renderPost}
+      keyExtractor={(item) => item.post_id.toString()}
+      ListHeaderComponent={renderHeader}
+      ListEmptyComponent={renderEmpty}
+      style={[styles.list, { backgroundColor: colors.background }]}
+      contentContainerStyle={[
+        (posts.length === 0 || loading) && styles.emptyListContainer
+      ]}
       showsVerticalScrollIndicator={false}
-    >
-      {/* Header Section */}
-      <View style={styles.header}>
-        {/* Profile Picture and Stats Row */}
-        <View style={styles.topSection}>
-          {/* Profile Picture */}
-          <View style={styles.profilePictureContainer}>
-            <Image
-              source={{ uri: 'https://via.placeholder.com/100' }}
-              style={[styles.profilePicture, { borderColor: colors.border }]}
-            />
-          </View>
-
-          {/* Stats */}
-          <View style={styles.statsContainer}>
-            <View style={styles.statItem}>
-              <Text style={[styles.statNumber, { color: colors.text }]}>
-                {profileData.posts}
-              </Text>
-              <Text style={[styles.statLabel, { color: colors.text }]}>posts</Text>
-            </View>
-            <TouchableOpacity style={styles.statItem}>
-              <Text style={[styles.statNumber, { color: colors.text }]}>
-                {profileData.followers}
-              </Text>
-              <Text style={[styles.statLabel, { color: colors.text }]}>followers</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.statItem}>
-              <Text style={[styles.statNumber, { color: colors.text }]}>
-                {profileData.following}
-              </Text>
-              <Text style={[styles.statLabel, { color: colors.text }]}>following</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Username and Edit Profile Button */}
-        <View style={styles.usernameSection}>
-          <Text style={[styles.username, { color: colors.text }]}>
-            {profileData.username}
-          </Text>
-          <TouchableOpacity 
-            style={[styles.editButton, { 
-              backgroundColor: colors.secondaryBackground,
-              borderColor: colors.border
-            }]}
-          >
-            <Text style={[styles.editButtonText, { color: colors.text }]}>
-              Edit profile
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Bio Section */}
-        <View style={styles.bioSection}>
-          <Text style={[styles.name, { color: colors.text }]}>
-            {profileData.name}
-          </Text>
-          <Text style={[styles.bio, { color: colors.text }]}>
-            {profileData.bio}
-          </Text>
-        </View>
-      </View>
-
-      {/* Tab Bar (Posts, Reels, Tagged) */}
-      <View style={[styles.tabBar, { borderTopColor: colors.border, borderBottomColor: colors.border }]}>
-        <TouchableOpacity style={styles.tabItem}>
-          <FontAwesome 
-            name="th" 
-            size={24} 
-            color={colors.text} 
-          />
-          <View style={[styles.tabIndicator, { backgroundColor: colors.text }]} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem}>
-          <FontAwesome 
-            name="film" 
-            size={24} 
-            color={colors.tabIconDefault} 
-          />
-        </TouchableOpacity>
-      </View>
-
-      {/* Posts Grid */}
-      <View style={styles.postsGrid}>
-        {profileData.postsGrid.map((_, index) => (
-          <TouchableOpacity key={index} style={styles.postItem}>
-            <View style={[styles.postPlaceholder, { backgroundColor: colors.secondaryBackground }]}>
-              <FontAwesome 
-                name="image" 
-                size={30} 
-                color={colors.tabIconDefault} 
-              />
-            </View>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </ScrollView>
+      refreshing={loading}
+      onRefresh={fetchPosts}
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  list: {
     flex: 1,
+  },
+  emptyListContainer: {
+    flexGrow: 1,
   },
   header: {
     paddingHorizontal: 16,
@@ -198,39 +294,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  tabBar: {
-    flexDirection: 'row',
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    marginTop: 12,
-  },
-  tabItem: {
+  emptyContainer: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 12,
-    position: 'relative',
-  },
-  tabIndicator: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 1,
-  },
-  postsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 2,
-  },
-  postItem: {
-    width: POST_SIZE,
-    height: POST_SIZE,
-    margin: 1,
-  },
-  postPlaceholder: {
-    width: '100%',
-    height: '100%',
-    alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyText: {
+    fontSize: 16,
   },
 });
