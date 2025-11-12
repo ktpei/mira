@@ -1,6 +1,6 @@
-import { Text, View } from '@/components/Themed';
-import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
+import { Text, View } from '@/src/components/Themed';
+import { useColorScheme } from '@/src/components/useColorScheme';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Dimensions, Image, StyleSheet, TouchableOpacity } from 'react-native';
 
