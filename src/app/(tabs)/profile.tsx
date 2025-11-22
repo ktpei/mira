@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Image, StyleSheet, TouchableOpacity } from 'react-native';
 
 // Mock current user ID - replace with actual auth later
-const CURRENT_USER_ID = 1;
+const CURRENT_USER_ID = '123e4567-e89b-12d3-a456-426614174000';
 
 interface PostData {
   out_post_id: number;
