@@ -11,7 +11,7 @@ export interface PostFeedItemProps {
   caption: string | null;
   uploaded_at: string;
   captured_at: string | null;
-  user_id: number;
+  user_id: string;
   username: string;
   profile_pic: string | null;
   handle: string | null;
