@@ -72,14 +72,21 @@ export default function ProfileScreen() {
       setLoading(true);
       setError(null);
       
+      // Guard: Don't call the function if profile isn't loaded yet
+      if (!profile?.user_id) {
+        setError('Profile not loaded yet');
+        setLoading(false);
+        return;
+      }
+      
       // Call the PostgreSQL function
       const { data, error: rpcError } = await executeSQLFunction<PostData[]>(
         'get_user_posts1',
         { 
-          p_profile_user_id: profile?.user_id,
-          p_current_user_id: profile?.user_id,
+          p_current_user_id: profile.user_id,  // Remove optional chaining since we checked above
           p_limit: 20,
-          p_offset: 0
+          p_offset: 0,
+          p_profile_user_id: profile.user_id
         }
       );
 
@@ -126,9 +133,12 @@ export default function ProfileScreen() {
     }
   };
 
+  // Update the useEffect to wait for profile to load
   useEffect(() => {
-    fetchPosts();
-  }, []);
+    if (profile?.user_id) {
+      fetchPosts();
+    }
+  }, [profile?.user_id]); // Re-run when profile.user_id becomes available
 
   const renderPost = ({ item }: { item: PostFeedItemProps }) => (
     <PostFeedItem {...item} />
