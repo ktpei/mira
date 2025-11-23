@@ -2,7 +2,8 @@ import Colors from '@/constants/Colors';
 import { Text, View } from '@/src/components/Themed';
 import { useColorScheme } from '@/src/components/useColorScheme';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Dimensions, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import { useRef, useState } from 'react';
+import { Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 
 const { width } = Dimensions.get('window');
 
@@ -15,7 +16,8 @@ export interface PostFeedItemProps {
   username: string;
   profile_pic: string | null;
   handle: string | null;
-  photo_url: string;
+  photo_url?: string; // Deprecated: use photo_urls instead
+  photo_urls?: string[]; // Array of photo URLs
   photo_width?: number | null;
   photo_height?: number | null;
   like_count: number;
@@ -31,6 +33,7 @@ export default function PostFeedItem({
   profile_pic,
   handle,
   photo_url,
+  photo_urls,
   photo_width,
   photo_height,
   like_count,
@@ -39,12 +42,27 @@ export default function PostFeedItem({
 }: PostFeedItemProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // Support both photo_url (legacy) and photo_urls (new)
+  const images = photo_urls && photo_urls.length > 0 
+    ? photo_urls 
+    : photo_url 
+      ? [photo_url] 
+      : ['https://via.placeholder.com/400x400'];
 
   // Calculate image aspect ratio
   const aspectRatio = photo_width && photo_height 
     ? photo_width / photo_height 
     : 1; // Default to 1:1 if dimensions not available
   const imageHeight = width / aspectRatio;
+
+  const handleScroll = (event: any) => {
+    const contentOffsetX = event.nativeEvent.contentOffset.x;
+    const index = Math.round(contentOffsetX / width);
+    setCurrentImageIndex(index);
+  };
 
   // Format relative time
   const formatRelativeTime = (dateString: string) => {
@@ -78,12 +96,46 @@ export default function PostFeedItem({
         </View>
       </View>
 
-      {/* Post Image */}
-      <Image
-        source={{ uri: photo_url }}
-        style={[styles.image, { height: imageHeight }]}
-        resizeMode="cover"
-      />
+      {/* Post Images - Scrollable if multiple */}
+      <View style={styles.imageContainer}>
+        <ScrollView
+          ref={scrollViewRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          style={styles.scrollView}
+        >
+          {images.map((url, index) => (
+            <Image
+              key={index}
+              source={{ uri: url }}
+              style={[styles.image, { height: imageHeight }]}
+              resizeMode="cover"
+            />
+          ))}
+        </ScrollView>
+        
+        {/* Pagination Dots - Only show if multiple images */}
+        {images.length > 1 && (
+          <View style={styles.paginationContainer}>
+            {images.map((_, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.paginationDot,
+                  {
+                    backgroundColor: index === currentImageIndex 
+                      ? colors.tint 
+                      : 'rgba(255, 255, 255, 0.5)',
+                  },
+                ]}
+              />
+            ))}
+          </View>
+        )}
+      </View>
 
       {/* Interaction Buttons */}
       <View style={styles.actions}>
@@ -171,9 +223,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  imageContainer: {
+    position: 'relative',
+  },
+  scrollView: {
+    width: width,
+  },
   image: {
     width: width,
     backgroundColor: '#f0f0f0',
+  },
+  paginationContainer: {
+    position: 'absolute',
+    bottom: 12,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+  },
+  paginationDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   actions: {
     flexDirection: 'row',

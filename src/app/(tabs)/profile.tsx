@@ -108,9 +108,9 @@ export default function ProfileScreen() {
           username: profileData.username, // TODO: Get from user query
           profile_pic: profileData.profile_pic, // TODO: Get from user query
           handle: null, // TODO: Get from user query
-          photo_url: post.photo_urls && post.photo_urls.length > 0 
-            ? post.photo_urls[0] 
-            : 'https://via.placeholder.com/400x400', // Fallback if no photos
+          photo_urls: post.photo_urls && post.photo_urls.length > 0 
+            ? post.photo_urls 
+            : ['https://via.placeholder.com/400x400'], // Fallback if no photos
           photo_width: null, // Not in response, will default to 1:1
           photo_height: null, // Not in response, will default to 1:1
           like_count: post.like_count,
