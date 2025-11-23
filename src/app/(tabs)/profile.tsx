@@ -10,8 +10,6 @@ import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Image, StyleSheet, TouchableOpacity } from 'react-native';
 
-// Mock current user ID - replace with actual auth later
-const CURRENT_USER_ID = 1;
 
 interface PostData {
   out_post_id: number;
@@ -28,7 +26,7 @@ interface PostData {
 export default function ProfileScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const router = useRouter();
 
   const handleSignOut = async () => {
@@ -56,16 +54,16 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Mock profile data - replace with real data later
+
   const profileData = {
-    user_id: CURRENT_USER_ID,
-    username: 'username',
-    name: 'Full Name',
-    bio: 'This is a bio description\n📍 Location\n🔗 link.com',
-    profile_pic: 'https://via.placeholder.com/100',
-    posts: 42,
-    followers: 1234,
-    following: 567,
+    user_id: user?.id,
+    username: user?.email || 'Unknown User',
+    name: profile?.first_name + ' ' + profile?.last_name || 'Unknown Name',
+    bio: profile?.bio || 'Unknown Bio',
+    profile_pic: profile?.profile_pic || 'https://via.placeholder.com/100',
+    posts: 0,
+    followers: 0,
+    following: 0,
   };
 
   // Fetch posts from Supabase
@@ -78,8 +76,8 @@ export default function ProfileScreen() {
       const { data, error: rpcError } = await executeSQLFunction<PostData[]>(
         'get_user_posts1',
         { 
-          p_profile_user_id: CURRENT_USER_ID,
-          p_current_user_id: CURRENT_USER_ID,
+          p_profile_user_id: profile?.user_id,
+          p_current_user_id: profile?.user_id,
           p_limit: 20,
           p_offset: 0
         }
@@ -99,7 +97,7 @@ export default function ProfileScreen() {
           caption: post.caption,
           uploaded_at: post.uploaded_at,
           captured_at: post.captured_at,
-          user_id: CURRENT_USER_ID,
+          user_id: profile?.user_id ?? null,
           username: profileData.username, // TODO: Get from user query
           profile_pic: profileData.profile_pic, // TODO: Get from user query
           handle: null, // TODO: Get from user query
