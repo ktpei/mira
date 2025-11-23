@@ -1,10 +1,12 @@
 import { getSession, onAuthStateChange } from '@/src/server/auth';
 import type { Session, User } from '@supabase/supabase-js';
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { getUserProfile, UserProfile } from '../server/users';
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
+  profile: UserProfile | null;
   loading: boolean;
   initialized: boolean;
 }
@@ -12,6 +14,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   session: null,
+  profile: null,
   loading: true,
   initialized: false,
 });
@@ -19,8 +22,28 @@ const AuthContext = createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [initialized, setInitialized] = useState(false);
+
+  // Load profile data when user changes
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (user) {
+        const { profile, error } = await getUserProfile(user.id);
+        if (error) {
+          console.error('Error loading profile:', error);
+          setProfile(null);
+        } else {
+          setProfile(profile);
+        }
+      } else {
+        setProfile(null);
+      }
+    };
+
+    loadProfile();
+  }, [user]);
 
   useEffect(() => {
     // Get initial session
@@ -48,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, initialized }}>
+    <AuthContext.Provider value={{ user, session, profile, loading, initialized }}>
       {children}
     </AuthContext.Provider>
   );
@@ -61,4 +84,5 @@ export function useAuth() {
   }
   return context;
 }
+
 

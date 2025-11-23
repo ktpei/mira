@@ -1,32 +1,25 @@
-import { useEffect, useState } from 'react';
-import { Alert, StyleSheet, TouchableOpacity } from 'react-native';
+import { StyleSheet, TouchableOpacity } from 'react-native';
 
 import Colors from '@/constants/Colors';
-import EditScreenInfo from '@/src/components/EditScreenInfo';
 import { Text, View } from '@/src/components/Themed';
 import { useColorScheme } from '@/src/components/useColorScheme';
-import { testSupabaseConnection } from '@/src/server/testSupabase';
+import { useAuth } from '@/src/contexts/AuthContext';
 
 export default function FeedScreen() {
-  const [isTesting, setIsTesting] = useState(false);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { user, profile, session, loading, initialized } = useAuth();
 
-  useEffect(() => {
-    // Test Supabase connection on mount
-    testSupabaseConnection();
-  }, []);
-
-  const handleRunTest = async () => {
-    setIsTesting(true);
-    const result = await testSupabaseConnection();
-    setIsTesting(false);
-    
-    if (result.success) {
-      Alert.alert('✅ Test Passed', 'Supabase connection is working correctly!');
-    } else {
-      Alert.alert('❌ Test Failed', result.error || 'Connection test failed');
-    }
+  const handleShowAuthInfo = () => {
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🔐 AUTH CONTEXT INFO');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('User:', user ? JSON.stringify(user, null, 2) : 'null');
+    console.log('Profile:', profile ? JSON.stringify(profile, null, 2) : 'null');
+    console.log('Session:', session ? 'Active' : 'null');
+    console.log('Loading:', loading);
+    console.log('Initialized:', initialized);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
   };
 
   return (
@@ -35,20 +28,11 @@ export default function FeedScreen() {
       <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
       
       <TouchableOpacity
-        style={[styles.testButton, { backgroundColor: colors.tint }]}
-        onPress={handleRunTest}
-        disabled={isTesting}
+        style={[styles.button, { backgroundColor: colors.tint }]}
+        onPress={handleShowAuthInfo}
       >
-        <Text style={styles.testButtonText}>
-          {isTesting ? 'Testing...' : 'Run Supabase Test'}
-        </Text>
+        <Text style={styles.buttonText}>Show Auth Info</Text>
       </TouchableOpacity>
-      
-      <Text style={[styles.note, { color: colors.tabIconDefault }]}>
-        Check console for detailed test results
-      </Text>
-      
-      <EditScreenInfo path="app/(tabs)/index.tsx" />
     </View>
   );
 }
@@ -68,21 +52,15 @@ const styles = StyleSheet.create({
     height: 1,
     width: '80%',
   },
-  testButton: {
+  button: {
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 8,
     marginTop: 20,
-    marginBottom: 10,
   },
-  testButtonText: {
+  buttonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
-  },
-  note: {
-    fontSize: 12,
-    marginTop: 8,
-    textAlign: 'center',
   },
 });

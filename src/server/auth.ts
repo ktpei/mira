@@ -63,6 +63,7 @@ export async function getSession(): Promise<{ session: Session | null; error: Au
  */
 export async function getCurrentUser(): Promise<{ user: User | null; error: AuthError | null }> {
   const { data: { user }, error } = await supabase.auth.getUser();
+  console.log('get current user():', user);
   return { user, error };
 }
 

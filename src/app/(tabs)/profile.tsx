@@ -10,8 +10,6 @@ import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Image, StyleSheet, TouchableOpacity } from 'react-native';
 
-// Mock current user ID - replace with actual auth later
-const CURRENT_USER_ID = '1';
 
 interface PostData {
   out_post_id: number;
@@ -28,7 +26,7 @@ interface PostData {
 export default function ProfileScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const router = useRouter();
 
   const handleSignOut = async () => {
@@ -56,16 +54,16 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Mock profile data - replace with real data later
+
   const profileData = {
-    user_id: CURRENT_USER_ID,
-    username: 'username',
-    name: 'Full Name',
-    bio: 'This is a bio description\n📍 Location\n🔗 link.com',
-    profile_pic: 'https://via.placeholder.com/100',
-    posts: 42,
-    followers: 1234,
-    following: 567,
+    user_id: user?.id,
+    username: user?.email || 'Unknown User',
+    name: profile?.first_name + ' ' + profile?.last_name || 'Unknown Name',
+    bio: profile?.bio || 'Unknown Bio',
+    profile_pic: profile?.profile_pic || 'https://via.placeholder.com/100',
+    posts: 0,
+    followers: 0,
+    following: 0,
   };
 
   // Fetch posts from Supabase
@@ -74,14 +72,21 @@ export default function ProfileScreen() {
       setLoading(true);
       setError(null);
       
+      // Guard: Don't call the function if profile isn't loaded yet
+      if (!profile?.user_id) {
+        setError('Profile not loaded yet');
+        setLoading(false);
+        return;
+      }
+      
       // Call the PostgreSQL function
       const { data, error: rpcError } = await executeSQLFunction<PostData[]>(
         'get_user_posts1',
         { 
-          p_profile_user_id: CURRENT_USER_ID,
-          p_current_user_id: CURRENT_USER_ID,
+          p_current_user_id: profile.user_id,  // Remove optional chaining since we checked above
           p_limit: 20,
-          p_offset: 0
+          p_offset: 0,
+          p_profile_user_id: profile.user_id
         }
       );
 
@@ -99,13 +104,13 @@ export default function ProfileScreen() {
           caption: post.caption,
           uploaded_at: post.uploaded_at,
           captured_at: post.captured_at,
-          user_id: CURRENT_USER_ID,
+          user_id: profile?.user_id ?? null,
           username: profileData.username, // TODO: Get from user query
           profile_pic: profileData.profile_pic, // TODO: Get from user query
           handle: null, // TODO: Get from user query
-          photo_url: post.photo_urls && post.photo_urls.length > 0 
-            ? post.photo_urls[0] 
-            : 'https://via.placeholder.com/400x400', // Fallback if no photos
+          photo_urls: post.photo_urls && post.photo_urls.length > 0 
+            ? post.photo_urls 
+            : ['https://via.placeholder.com/400x400'], // Fallback if no photos
           photo_width: null, // Not in response, will default to 1:1
           photo_height: null, // Not in response, will default to 1:1
           like_count: post.like_count,
@@ -128,9 +133,12 @@ export default function ProfileScreen() {
     }
   };
 
+  // Update the useEffect to wait for profile to load
   useEffect(() => {
-    fetchPosts();
-  }, []);
+    if (profile?.user_id) {
+      fetchPosts();
+    }
+  }, [profile?.user_id]); // Re-run when profile.user_id becomes available
 
   const renderPost = ({ item }: { item: PostFeedItemProps }) => (
     <PostFeedItem {...item} />

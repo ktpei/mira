@@ -2,6 +2,7 @@ import Colors from '@/constants/Colors';
 import { Text, View } from '@/src/components/Themed';
 import { useColorScheme } from '@/src/components/useColorScheme';
 import { useAuth } from '@/src/contexts/AuthContext';
+import { type Visibility } from '@/src/server/posts';
 import { executeSQLFunction } from '@/src/server/supabase';
 import { uploadMultipleImagesToStorage } from '@/src/utils/storage';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -16,8 +17,6 @@ import {
   TextInput,
   TouchableOpacity
 } from 'react-native';
-
-type Visibility = 'public' | 'private' | 'friends';
 export default function CreateScreen() {
   const [caption, setCaption] = useState('');
   const [visibility, setVisibility] = useState<Visibility>('public');
