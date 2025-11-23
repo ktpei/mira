@@ -2,7 +2,7 @@ import Colors from '@/constants/Colors';
 import { Text, View } from '@/src/components/Themed';
 import { useColorScheme } from '@/src/components/useColorScheme';
 import { useAuth } from '@/src/contexts/AuthContext';
-import { executeSQLFunction } from '@/src/server/supabase';
+import { createPost, type Visibility } from '@/src/server/posts';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useState } from 'react';
 import {
@@ -13,8 +13,6 @@ import {
   TextInput,
   TouchableOpacity
 } from 'react-native';
-
-type Visibility = 'public' | 'private' | 'friends';
 export default function CreateScreen() {
   const [caption, setCaption] = useState('');
   const [visibility, setVisibility] = useState<Visibility>('public');
@@ -38,14 +36,12 @@ export default function CreateScreen() {
     setIsLoading(true);
 
     try {
-      // TODO: Get user_id from your users table based on auth user.id (UUID)
-      // For now, using a placeholder - you'll need to map auth UUID to your user_id bigint
-      const { data, error } = await executeSQLFunction('create_post', {
-        p_user_id: 1, // Replace with actual user_id lookup
-        p_caption: caption.trim() || null,
-        p_location_id: locationId ? parseInt(locationId, 10) : null,
-        p_captured_at: new Date().toISOString(),
-        p_visibility: visibility,
+      const { data, error } = await createPost({
+        caption,
+        visibility,
+        locationId: locationId || null,
+        capturedAt: new Date(),
+        user,
       });
 
       if (error) {

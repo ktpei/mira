@@ -1,6 +1,5 @@
 import { StyleSheet } from 'react-native';
 
-import EditScreenInfo from '@/src/components/EditScreenInfo';
 import { Text, View } from '@/src/components/Themed';
 
 export default function MapScreen() {
@@ -8,7 +7,6 @@ export default function MapScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Map</Text>
       <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
-      <EditScreenInfo path="app/(tabs)/map.tsx" />
     </View>
   );
 }
