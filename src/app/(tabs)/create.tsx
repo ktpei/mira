@@ -2,11 +2,13 @@ import Colors from '@/constants/Colors';
 import { Text, View } from '@/src/components/Themed';
 import { useColorScheme } from '@/src/components/useColorScheme';
 import { useAuth } from '@/src/contexts/AuthContext';
+import { createOrFindLocation } from '@/src/server/locations';
 import { type Visibility } from '@/src/server/posts';
 import { executeSQLFunction } from '@/src/server/supabase';
 import { uploadMultipleImagesToStorage } from '@/src/utils/storage';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -17,13 +19,27 @@ import {
   TextInput,
   TouchableOpacity
 } from 'react-native';
+interface LocationState {
+  latitude: number | null;
+  longitude: number | null;
+  name: string | null;
+  address: string | null;
+}
+
 export default function CreateScreen() {
   const [caption, setCaption] = useState('');
   const [visibility, setVisibility] = useState<Visibility>('public');
-  const [locationId, setLocationId] = useState<string>('');
+  const [location, setLocation] = useState<LocationState>({
+    latitude: null,
+    longitude: null,
+    name: null,
+    address: null,
+  });
+  const [useCurrentLocation, setUseCurrentLocation] = useState(false);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { user } = useAuth();
@@ -55,6 +71,74 @@ export default function CreateScreen() {
 
   const removeImage = (index: number) => {
     setSelectedImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const getCurrentLocation = async () => {
+    try {
+      setIsGettingLocation(true);
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Location permission is required to add your current location to the post.'
+        );
+        setIsGettingLocation(false);
+        return;
+      }
+
+      const locationData = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+      // Try to get reverse geocoding for address
+      let address = null;
+      let name = null;
+      try {
+        const reverseGeocode = await Location.reverseGeocodeAsync({
+          latitude: locationData.coords.latitude,
+          longitude: locationData.coords.longitude,
+        });
+
+        if (reverseGeocode && reverseGeocode.length > 0) {
+          const place = reverseGeocode[0];
+          name = place.name || place.street || null;
+          address = [
+            place.street,
+            place.city,
+            place.region,
+            place.country,
+          ]
+            .filter(Boolean)
+            .join(', ') || null;
+        }
+      } catch (geocodeError) {
+        console.log('Reverse geocoding failed:', geocodeError);
+        // Continue without address
+      }
+
+      setLocation({
+        latitude: locationData.coords.latitude,
+        longitude: locationData.coords.longitude,
+        name,
+        address,
+      });
+      setUseCurrentLocation(true);
+    } catch (error: any) {
+      console.error('Error getting location:', error);
+      Alert.alert('Error', 'Failed to get your current location. Please try again.');
+    } finally {
+      setIsGettingLocation(false);
+    }
+  };
+
+  const clearLocation = () => {
+    setLocation({
+      latitude: null,
+      longitude: null,
+      name: null,
+      address: null,
+    });
+    setUseCurrentLocation(false);
   };
 
   const handleCreatePost = async () => {
@@ -95,11 +179,33 @@ export default function CreateScreen() {
 
       setIsUploadingImages(false);
 
+      // Create or find location if provided
+      let locationId: number | null = null;
+      if (location.latitude !== null && location.longitude !== null) {
+        const { data: locationData, error: locationError } = await createOrFindLocation({
+          latitude: location.latitude,
+          longitude: location.longitude,
+          name: location.name,
+          address: location.address,
+        });
+
+        if (locationError) {
+          console.error('Error creating/finding location:', locationError);
+          Alert.alert(
+            'Location Error',
+            'Failed to save location. Post will be created without location.'
+          );
+          // Continue without location
+        } else if (locationData) {
+          locationId = locationData.location_id;
+        }
+      }
+
       // Create the post with photo URLs
       const { data, error } = await executeSQLFunction('create_post_will', {
         p_user_id: user.id,
         p_caption: caption.trim() || null,
-        p_location_id: locationId ? parseInt(locationId, 10) : null,
+        p_location_id: locationId,
         p_captured_at: new Date().toISOString(),
         p_visibility: visibility,
         p_photo_urls: photoUrls.length > 0 ? photoUrls : null,
@@ -118,7 +224,13 @@ export default function CreateScreen() {
         Alert.alert('Success', 'Post created successfully!');
         // Reset form
         setCaption('');
-        setLocationId('');
+        setLocation({
+          latitude: null,
+          longitude: null,
+          name: null,
+          address: null,
+        });
+        setUseCurrentLocation(false);
         setVisibility('public');
         setSelectedImages([]);
       } else {
@@ -235,23 +347,66 @@ export default function CreateScreen() {
           ))}
         </View>
 
-        <Text style={[styles.label, { color: colors.text }]}>Location ID (Optional)</Text>
-        <TextInput
-          style={[
-            styles.textInput,
-            styles.locationInput,
-            {
-              backgroundColor: colors.secondaryBackground,
-              color: colors.text,
-              borderColor: colors.border
-            }
-          ]}
-          placeholder="Enter location ID"
-          placeholderTextColor={colors.tabIconDefault}
-          value={locationId}
-          onChangeText={setLocationId}
-          keyboardType="numeric"
-        />
+        <Text style={[styles.label, { color: colors.text }]}>Location (Optional)</Text>
+        {!useCurrentLocation ? (
+          <TouchableOpacity
+            style={[
+              styles.locationButton,
+              {
+                backgroundColor: colors.secondaryBackground,
+                borderColor: colors.border
+              }
+            ]}
+            onPress={getCurrentLocation}
+            disabled={isLoading || isGettingLocation}
+          >
+            {isGettingLocation ? (
+              <>
+                <ActivityIndicator size="small" color={colors.text} />
+                <Text style={[styles.locationButtonText, { color: colors.text }]}>
+                  Getting location...
+                </Text>
+              </>
+            ) : (
+              <>
+                <FontAwesome name="map-marker" size={20} color={colors.text} />
+                <Text style={[styles.locationButtonText, { color: colors.text }]}>
+                  Use Current Location
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+        ) : (
+          <View style={[styles.locationInfoContainer, { backgroundColor: colors.secondaryBackground, borderColor: colors.border }]}>
+            <View style={styles.locationInfo}>
+              <FontAwesome name="map-marker" size={16} color={colors.tint} />
+              <View style={styles.locationTextContainer}>
+                {location.name && (
+                  <Text style={[styles.locationName, { color: colors.text }]}>
+                    {location.name}
+                  </Text>
+                )}
+                {location.address && (
+                  <Text style={[styles.locationAddress, { color: colors.tabIconDefault }]} numberOfLines={2}>
+                    {location.address}
+                  </Text>
+                )}
+                {!location.name && !location.address && (
+                  <Text style={[styles.locationAddress, { color: colors.tabIconDefault }]}>
+                    {location.latitude?.toFixed(6)}, {location.longitude?.toFixed(6)}
+                  </Text>
+                )}
+              </View>
+            </View>
+            <TouchableOpacity
+              style={styles.removeLocationButton}
+              onPress={clearLocation}
+              disabled={isLoading}
+            >
+              <FontAwesome name="times-circle" size={20} color="#ff3040" />
+            </TouchableOpacity>
+          </View>
+        )}
 
         <TouchableOpacity
           style={[
@@ -304,8 +459,48 @@ const styles = StyleSheet.create({
     minHeight: 100,
     textAlignVertical: 'top',
   },
-  locationInput: {
-    minHeight: 50,
+  locationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 8,
+    marginBottom: 12,
+  },
+  locationButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  locationInfoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  locationInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  locationTextContainer: {
+    flex: 1,
+  },
+  locationName: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  locationAddress: {
+    fontSize: 12,
+  },
+  removeLocationButton: {
+    padding: 4,
   },
   visibilityContainer: {
     flexDirection: 'row',
