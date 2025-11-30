@@ -3,7 +3,7 @@ import { Text, View } from '@/src/components/Themed';
 import { useColorScheme } from '@/src/components/useColorScheme';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useRef, useState } from 'react';
-import { Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { Alert, Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 
 const { width } = Dimensions.get('window');
 
@@ -23,6 +23,8 @@ export interface PostFeedItemProps {
   like_count: number;
   comment_count: number;
   is_liked?: boolean;
+  current_user_id?: string | null; // Current authenticated user's ID
+  onDelete?: (postId: number) => void; // Callback when post is deleted
 }
 
 export default function PostFeedItem({
@@ -39,6 +41,9 @@ export default function PostFeedItem({
   like_count,
   comment_count,
   is_liked = false,
+  user_id,
+  current_user_id,
+  onDelete,
 }: PostFeedItemProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -78,6 +83,26 @@ export default function PostFeedItem({
   };
 
   const displayName = handle || username;
+  const isOwnPost = current_user_id && user_id && current_user_id === user_id;
+
+  const handleDeletePress = () => {
+    Alert.alert(
+      'Delete Post',
+      'Are you sure you want to delete this post? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            if (onDelete) {
+              onDelete(post_id);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -94,6 +119,15 @@ export default function PostFeedItem({
             {displayName}
           </Text>
         </View>
+        {isOwnPost && (
+          <TouchableOpacity onPress={handleDeletePress} style={styles.deleteButton}>
+            <FontAwesome
+              name="trash-o"
+              size={18}
+              color={colors.tabIconDefault}
+            />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Post Images - Scrollable if multiple */}
@@ -222,6 +256,9 @@ const styles = StyleSheet.create({
   username: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  deleteButton: {
+    padding: 4,
   },
   imageContainer: {
     position: 'relative',

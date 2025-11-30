@@ -1,11 +1,11 @@
-import { StyleSheet, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, RefreshControl, StyleSheet } from 'react-native';
 
 import Colors from '@/constants/Colors';
 import PostFeedItem, { PostFeedItemProps } from '@/src/components/PostFeedItem';
 import { Text, View } from '@/src/components/Themed';
 import { useColorScheme } from '@/src/components/useColorScheme';
 import { useAuth } from '@/src/contexts/AuthContext';
-import { getFeedPosts } from '@/src/server/posts';
+import { deletePost, getFeedPosts } from '@/src/server/posts';
 import { useEffect, useState } from 'react';
 
 export default function FeedScreen() {
@@ -90,8 +90,38 @@ export default function FeedScreen() {
     }
   };
 
+  const handleDeletePost = async (postId: number) => {
+    if (!user?.id) {
+      Alert.alert('Error', 'You must be logged in to delete posts');
+      return;
+    }
+
+    try {
+      const { data, error } = await deletePost(postId, user.id);
+
+      if (error) {
+        Alert.alert('Error', error.message || 'Failed to delete post');
+        return;
+      }
+
+      if (data && data.length > 0 && data[0].success) {
+        // Remove the post from the local state
+        setPosts((prev) => prev.filter((post) => post.post_id !== postId));
+      } else {
+        Alert.alert('Error', data?.[0]?.message || 'Failed to delete post');
+      }
+    } catch (err: any) {
+      console.error('Error deleting post:', err);
+      Alert.alert('Error', err.message || 'An unexpected error occurred');
+    }
+  };
+
   const renderPost = ({ item }: { item: PostFeedItemProps }) => (
-    <PostFeedItem {...item} />
+    <PostFeedItem 
+      {...item} 
+      current_user_id={user?.id || null}
+      onDelete={handleDeletePost}
+    />
   );
 
   const renderFooter = () => {

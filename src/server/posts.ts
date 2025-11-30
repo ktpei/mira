@@ -1,6 +1,6 @@
+import type { PostFeedItemProps } from '@/src/components/PostFeedItem';
 import type { User } from '@supabase/supabase-js';
 import { executeSQLFunction } from './supabase';
-import type { PostFeedItemProps } from '@/src/components/PostFeedItem';
 
 export type Visibility = 'public' | 'private' | 'friends';
 
@@ -128,6 +128,46 @@ export async function getFeedPosts(
     return {
       data: null,
       error: { message: err.message || 'Failed to fetch feed posts' },
+    };
+  }
+}
+
+export interface DeletePostResult {
+  success: boolean;
+  message: string;
+}
+
+/**
+ * Delete a post
+ * Only the post owner can delete their own posts
+ * 
+ * @param postId - Post ID to delete
+ * @param userId - Current user's UUID (must match post owner)
+ * @returns Success status and message
+ */
+export async function deletePost(
+  postId: number,
+  userId: string
+): Promise<{ data: DeletePostResult[] | null; error: any }> {
+  try {
+    const { data, error } = await executeSQLFunction<DeletePostResult[]>(
+      'delete_post',
+      {
+        p_post_id: postId,
+        p_user_id: userId,
+      }
+    );
+
+    if (error) {
+      console.error('Error deleting post:', error);
+      return { data: null, error };
+    }
+
+    return { data, error: null };
+  } catch (err: any) {
+    return {
+      data: null,
+      error: { message: err.message || 'Failed to delete post' },
     };
   }
 }
