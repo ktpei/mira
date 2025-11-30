@@ -180,3 +180,51 @@ export async function addUserLens(
   }
 }
 
+/**
+ * Delete user camera from collection
+ */
+export async function deleteUserCamera(
+  userId: string,
+  userCameraId: number
+): Promise<{ data: { success: boolean; message: string }[] | null; error: any }> {
+  try {
+    const { data, error } = await executeSQLFunction<{ success: boolean; message: string }[]>(
+      'delete_user_camera',
+      {
+        p_user_id: userId,
+        p_user_camera_id: userCameraId,
+      }
+    );
+    return { data, error };
+  } catch (err: any) {
+    return {
+      data: null,
+      error: { message: err.message || 'Failed to delete camera' },
+    };
+  }
+}
+
+/**
+ * Delete user lens from collection
+ */
+export async function deleteUserLens(
+  userId: string,
+  userLensId: number
+): Promise<{ data: { success: boolean; message: string }[] | null; error: any }> {
+  try {
+    const { data, error } = await executeSQLFunction<{ success: boolean; message: string }[]>(
+      'delete_user_lens',
+      {
+        p_user_id: userId,
+        p_user_lens_id: userLensId,
+      }
+    );
+    return { data, error };
+  } catch (err: any) {
+    return {
+      data: null,
+      error: { message: err.message || 'Failed to delete lens' },
+    };
+  }
+}
+

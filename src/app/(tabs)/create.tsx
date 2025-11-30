@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   TextInput,
@@ -45,23 +46,47 @@ export default function CreateScreen() {
   const [userLenses, setUserLenses] = useState<UserLens[]>([]);
   const [selectedCameraId, setSelectedCameraId] = useState<number | null>(null);
   const [selectedLensId, setSelectedLensId] = useState<number | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { user } = useAuth();
 
-  // Fetch user equipment on mount
-  useEffect(() => {
-    const fetchEquipment = async () => {
-      if (!user?.id) return;
+  // Fetch user equipment
+  const fetchEquipment = async () => {
+    if (!user?.id) return;
+    try {
       const [camerasResult, lensesResult] = await Promise.all([
         getUserCameras(user.id),
         getUserLenses(user.id),
       ]);
-      if (camerasResult.data) setUserCameras(camerasResult.data);
-      if (lensesResult.data) setUserLenses(lensesResult.data);
-    };
+      if (camerasResult.error) {
+        console.error('Error fetching cameras:', camerasResult.error);
+      } else if (camerasResult.data) {
+        console.log('Fetched cameras:', camerasResult.data.length);
+        setUserCameras(camerasResult.data);
+      }
+      if (lensesResult.error) {
+        console.error('Error fetching lenses:', lensesResult.error);
+      } else if (lensesResult.data) {
+        console.log('Fetched lenses:', lensesResult.data.length);
+        setUserLenses(lensesResult.data);
+      }
+    } catch (err: any) {
+      console.error('Error fetching equipment:', err);
+    }
+  };
+
+  // Fetch user equipment on mount
+  useEffect(() => {
     fetchEquipment();
   }, [user?.id]);
+
+  // Handle pull-to-refresh
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchEquipment();
+    setRefreshing(false);
+  };
 
   const pickImage = async () => {
     // Request permissions
@@ -275,7 +300,10 @@ export default function CreateScreen() {
   ];
 
   return (
-    <ScrollView 
+    <ScrollView
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.tint} />
+      }
       style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={styles.contentContainer}
     >

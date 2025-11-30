@@ -8,10 +8,16 @@ import { signOut } from '@/src/server/auth';
 import {
   addUserCamera,
   addUserLens,
+  deleteUserCamera,
+  deleteUserLens,
   getAllCameras,
   getAllLenses,
+  getUserCameras,
+  getUserLenses,
   type Camera,
   type Lens,
+  type UserCamera,
+  type UserLens,
 } from '@/src/server/equipment';
 import { deletePost } from '@/src/server/posts';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -81,6 +87,11 @@ export default function ProfileScreen() {
   const [cameraSearchQuery, setCameraSearchQuery] = useState('');
   const [lensSearchQuery, setLensSearchQuery] = useState('');
   const [equipmentLoading, setEquipmentLoading] = useState(false);
+  
+  // User equipment state
+  const [userCameras, setUserCameras] = useState<UserCamera[]>([]);
+  const [userLenses, setUserLenses] = useState<UserLens[]>([]);
+  const [showEquipmentDropdown, setShowEquipmentDropdown] = useState(false);
 
   const profileData = {
     user_id: user?.id,
@@ -205,17 +216,21 @@ export default function ProfileScreen() {
 
     try {
       setEquipmentLoading(true);
+      console.log('Adding camera:', camera.camera_id, camera.brand, camera.model);
       const { data, error } = await addUserCamera({
         userId: user.id,
         cameraId: camera.camera_id,
       });
 
       if (error) {
+        console.error('Error adding camera:', error);
         Alert.alert('Error', error.message || 'Failed to add camera');
       } else {
+        console.log('Camera added successfully:', data);
         Alert.alert('Success', `${camera.brand} ${camera.model} added to your profile`);
         setShowCameraModal(false);
         setCameraSearchQuery('');
+        fetchUserEquipment(); // Refresh equipment list
       }
     } catch (err: any) {
       console.error('Error adding camera:', err);
@@ -245,6 +260,7 @@ export default function ProfileScreen() {
         Alert.alert('Success', `${lens.brand} ${lens.model} added to your profile`);
         setShowLensModal(false);
         setLensSearchQuery('');
+        fetchUserEquipment(); // Refresh equipment list
       }
     } catch (err: any) {
       console.error('Error adding lens:', err);
@@ -254,12 +270,100 @@ export default function ProfileScreen() {
     }
   };
 
+  // Fetch user equipment
+  const fetchUserEquipment = async () => {
+    if (!user?.id) return;
+    try {
+      const [camerasResult, lensesResult] = await Promise.all([
+        getUserCameras(user.id),
+        getUserLenses(user.id),
+      ]);
+      if (camerasResult.data) setUserCameras(camerasResult.data);
+      if (lensesResult.data) setUserLenses(lensesResult.data);
+    } catch (err: any) {
+      console.error('Error fetching user equipment:', err);
+    }
+  };
+
   // Update the useEffect to wait for profile to load
   useEffect(() => {
     if (profile?.user_id) {
       fetchPosts();
+      fetchUserEquipment();
     }
   }, [profile?.user_id]);
+
+  // Handle delete camera
+  const handleDeleteCamera = async (userCameraId: number) => {
+    if (!user?.id) {
+      Alert.alert('Error', 'You must be logged in');
+      return;
+    }
+
+    Alert.alert(
+      'Delete Camera',
+      'Are you sure you want to remove this camera from your collection?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { data, error } = await deleteUserCamera(user.id, userCameraId);
+              if (error) {
+                Alert.alert('Error', error.message || 'Failed to delete camera');
+              } else if (data && data.length > 0 && data[0].success) {
+                setUserCameras((prev) => prev.filter((c) => c.user_camera_id !== userCameraId));
+                Alert.alert('Success', 'Camera removed from your collection');
+              } else {
+                Alert.alert('Error', data?.[0]?.message || 'Failed to delete camera');
+              }
+            } catch (err: any) {
+              console.error('Error deleting camera:', err);
+              Alert.alert('Error', err.message || 'An unexpected error occurred');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Handle delete lens
+  const handleDeleteLens = async (userLensId: number) => {
+    if (!user?.id) {
+      Alert.alert('Error', 'You must be logged in');
+      return;
+    }
+
+    Alert.alert(
+      'Delete Lens',
+      'Are you sure you want to remove this lens from your collection?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { data, error } = await deleteUserLens(user.id, userLensId);
+              if (error) {
+                Alert.alert('Error', error.message || 'Failed to delete lens');
+              } else if (data && data.length > 0 && data[0].success) {
+                setUserLenses((prev) => prev.filter((l) => l.user_lens_id !== userLensId));
+                Alert.alert('Success', 'Lens removed from your collection');
+              } else {
+                Alert.alert('Error', data?.[0]?.message || 'Failed to delete lens');
+              }
+            } catch (err: any) {
+              console.error('Error deleting lens:', err);
+              Alert.alert('Error', err.message || 'An unexpected error occurred');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const handleDeletePost = async (postId: number) => {
     if (!user?.id) {
@@ -375,6 +479,107 @@ export default function ProfileScreen() {
         <Text style={[styles.bio, { color: colors.text }]}>
           {profileData.bio}
         </Text>
+      </View>
+
+      {/* Equipment Section */}
+      <View style={styles.equipmentSection}>
+        <TouchableOpacity
+          style={styles.equipmentHeader}
+          onPress={() => setShowEquipmentDropdown(!showEquipmentDropdown)}
+        >
+          <Text style={[styles.equipmentTitle, { color: colors.text }]}>
+            My Equipment ({userCameras.length + userLenses.length})
+          </Text>
+          <FontAwesome
+            name={showEquipmentDropdown ? 'chevron-up' : 'chevron-down'}
+            size={16}
+            color={colors.text}
+          />
+        </TouchableOpacity>
+
+        {showEquipmentDropdown && (
+          <View style={styles.equipmentContent}>
+            {/* Cameras */}
+            {userCameras.length > 0 && (
+              <View style={styles.equipmentCategory}>
+                <Text style={[styles.equipmentCategoryTitle, { color: colors.text }]}>
+                  Cameras ({userCameras.length})
+                </Text>
+                {userCameras.map((camera) => (
+                  <View
+                    key={camera.user_camera_id}
+                    style={[styles.equipmentItem, { borderColor: colors.border }]}
+                  >
+                    <View style={styles.equipmentItemContent}>
+                      <Text style={[styles.equipmentItemName, { color: colors.text }]}>
+                        {camera.brand} {camera.model}
+                      </Text>
+                      {camera.nickname && (
+                        <Text style={[styles.equipmentItemDetail, { color: colors.tabIconDefault }]}>
+                          {camera.nickname}
+                        </Text>
+                      )}
+                      {camera.serial_num && (
+                        <Text style={[styles.equipmentItemDetail, { color: colors.tabIconDefault }]}>
+                          SN: {camera.serial_num}
+                        </Text>
+                      )}
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => handleDeleteCamera(camera.user_camera_id)}
+                      style={styles.deleteButton}
+                    >
+                      <FontAwesome name="trash" size={16} color={colors.tabIconDefault} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* Lenses */}
+            {userLenses.length > 0 && (
+              <View style={styles.equipmentCategory}>
+                <Text style={[styles.equipmentCategoryTitle, { color: colors.text }]}>
+                  Lenses ({userLenses.length})
+                </Text>
+                {userLenses.map((lens) => (
+                  <View
+                    key={lens.user_lens_id}
+                    style={[styles.equipmentItem, { borderColor: colors.border }]}
+                  >
+                    <View style={styles.equipmentItemContent}>
+                      <Text style={[styles.equipmentItemName, { color: colors.text }]}>
+                        {lens.brand} {lens.model}
+                      </Text>
+                      {lens.nickname && (
+                        <Text style={[styles.equipmentItemDetail, { color: colors.tabIconDefault }]}>
+                          {lens.nickname}
+                        </Text>
+                      )}
+                      {lens.serial_num && (
+                        <Text style={[styles.equipmentItemDetail, { color: colors.tabIconDefault }]}>
+                          SN: {lens.serial_num}
+                        </Text>
+                      )}
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => handleDeleteLens(lens.user_lens_id)}
+                      style={styles.deleteButton}
+                    >
+                      <FontAwesome name="trash" size={16} color={colors.tabIconDefault} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {userCameras.length === 0 && userLenses.length === 0 && (
+              <Text style={[styles.emptyEquipmentText, { color: colors.tabIconDefault }]}>
+                No equipment added yet
+              </Text>
+            )}
+          </View>
+        )}
       </View>
 
       {/* Equipment Buttons */}
@@ -788,5 +993,39 @@ const styles = StyleSheet.create({
   },
   equipmentItemDetail: {
     fontSize: 14,
+  },
+  equipmentSection: {
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  equipmentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  equipmentTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  equipmentContent: {
+    marginTop: 8,
+  },
+  equipmentCategory: {
+    marginBottom: 16,
+  },
+  equipmentCategoryTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  deleteButton: {
+    padding: 8,
+  },
+  emptyEquipmentText: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    paddingVertical: 12,
   },
 });
