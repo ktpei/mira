@@ -436,7 +436,7 @@ export default function ProfileScreen() {
             onPress={() => {
               if (profile?.user_id) {
                 router.push({
-                  pathname: '/screens/followers',
+                  pathname: '/screens/followers' as any,
                   params: { userId: profile.user_id }
                 });
               }
@@ -452,7 +452,7 @@ export default function ProfileScreen() {
             onPress={() => {
               if (profile?.user_id) {
                 router.push({
-                  pathname: '/screens/following',
+                  pathname: '/screens/following' as any,
                   params: { userId: profile.user_id }
                 });
               }
