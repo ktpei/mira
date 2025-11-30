@@ -58,7 +58,7 @@ export default function ProfileScreen() {
 
   const profileData = {
     user_id: user?.id,
-    username: user?.email || 'Unknown User',
+    username: profile?.username || user?.email || 'Unknown User',
     name: profile?.first_name + ' ' + profile?.last_name || 'Unknown Name',
     bio: profile?.bio || 'Unknown Bio',
     profile_pic: profile?.profile_pic || 'https://via.placeholder.com/100',
