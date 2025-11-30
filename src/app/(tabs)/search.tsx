@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 6,
     height: 36,
   },
   searchIcon: {
