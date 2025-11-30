@@ -1,7 +1,6 @@
 import Colors from '@/constants/Colors';
 import { executeSQLFunction } from '@/lib/supabase';
 import PostFeedItem, { PostFeedItemProps } from '@/src/components/PostFeedItem';
-import { Text, View } from '@/src/components/Themed';
 import { useColorScheme } from '@/src/components/useColorScheme';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { signOut } from '@/src/server/auth';
@@ -9,7 +8,7 @@ import { deletePost } from '@/src/server/posts';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 
 interface PostData {
@@ -201,13 +200,33 @@ export default function ProfileScreen() {
             </Text>
             <Text style={[styles.statLabel, { color: colors.text }]}>posts</Text>
           </View>
-          <TouchableOpacity style={styles.statItem}>
+          <TouchableOpacity 
+            style={styles.statItem}
+            onPress={() => {
+              if (profile?.user_id) {
+                router.push({
+                  pathname: '/screens/followers',
+                  params: { userId: profile.user_id }
+                });
+              }
+            }}
+          >
             <Text style={[styles.statNumber, { color: colors.text }]}>
               {profileData.followers}
             </Text>
             <Text style={[styles.statLabel, { color: colors.text }]}>followers</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.statItem}>
+          <TouchableOpacity 
+            style={styles.statItem}
+            onPress={() => {
+              if (profile?.user_id) {
+                router.push({
+                  pathname: '/screens/following',
+                  params: { userId: profile.user_id }
+                });
+              }
+            }}
+          >
             <Text style={[styles.statNumber, { color: colors.text }]}>
               {profileData.following}
             </Text>

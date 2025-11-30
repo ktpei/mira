@@ -10,6 +10,13 @@ export interface UserProfile {
   updated_at?: string;
 }
 
+export interface UserListItem {
+  user_id: string;
+  username: string;
+  full_name: string | null;
+  profile_pic: string | null;
+}
+
 /**
  * Get full user profile by auth user UUID
  * 
@@ -36,4 +43,18 @@ export async function getUserProfile(userId: string): Promise<{
     console.error('Unexpected error getting user profile:', err);
     return { profile: null, error: { message: err.message || 'Failed to get user profile' } };
   }
+}
+
+export async function getFollowers(userId: string): Promise<{
+  data: UserListItem[] | null;
+  error: any;
+}> {
+  return executeSQLFunction<UserListItem[]>('get_user_followers', { p_user_id: userId });
+}
+
+export async function getFollowing(userId: string): Promise<{
+  data: UserListItem[] | null;
+  error: any;
+}> {
+  return executeSQLFunction<UserListItem[]>('get_user_following', { p_user_id: userId });
 }
