@@ -5,6 +5,7 @@ import { useColorScheme } from '@/src/components/useColorScheme';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { signOut } from '@/src/server/auth';
 import { deletePost } from '@/src/server/posts';
+import { getFollowerCount, getFollowingCount } from '@/src/server/users';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -51,6 +52,8 @@ export default function ProfileScreen() {
     );
   };
   const [posts, setPosts] = useState<PostFeedItemProps[]>([]);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,8 +67,23 @@ export default function ProfileScreen() {
     bio: profile?.bio || 'Welcome to Mira! Sign in to view your profile.',
     profile_pic: profile?.profile_pic || 'https://via.placeholder.com/100',
     posts: 0,
-    followers: 0,
-    following: 0,
+    followers: followersCount,
+    following: followingCount,
+  };
+
+  const fetchCounts = async () => {
+    if (!profile?.user_id) {
+      setFollowersCount(0);
+      setFollowingCount(0);
+      return;
+    }
+    const [followersData, followingData] = await Promise.all([
+      getFollowerCount(profile.user_id),
+      getFollowingCount(profile.user_id)
+    ]);
+    
+    if (!followersData.error) setFollowersCount(followersData.count);
+    if (!followingData.error) setFollowingCount(followingData.count);
   };
 
   // Fetch posts from Supabase
@@ -73,6 +91,7 @@ export default function ProfileScreen() {
     try {
       setLoading(true);
       setError(null);
+      fetchCounts(); // Fetch counts when fetching posts
       
       // Guard: Don't call the function if profile isn't loaded yet
       if (!profile?.user_id) {

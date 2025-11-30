@@ -58,3 +58,19 @@ export async function getFollowing(userId: string): Promise<{
 }> {
   return executeSQLFunction<UserListItem[]>('get_user_following', { p_user_id: userId });
 }
+
+export async function getFollowerCount(userId: string): Promise<{
+  count: number;
+  error: any;
+}> {
+  const { data, error } = await executeSQLFunction<number>('get_follower_count', { p_user_id: userId });
+  return { count: data ?? 0, error };
+}
+
+export async function getFollowingCount(userId: string): Promise<{
+  count: number;
+  error: any;
+}> {
+  const { data, error } = await executeSQLFunction<number>('get_following_count', { p_user_id: userId });
+  return { count: data ?? 0, error };
+}
