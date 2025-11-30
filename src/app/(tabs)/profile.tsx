@@ -5,11 +5,28 @@ import { Text, View } from '@/src/components/Themed';
 import { useColorScheme } from '@/src/components/useColorScheme';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { signOut } from '@/src/server/auth';
+import {
+  addUserCamera,
+  addUserLens,
+  getAllCameras,
+  getAllLenses,
+  type Camera,
+  type Lens,
+} from '@/src/server/equipment';
 import { deletePost } from '@/src/server/posts';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  Modal,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity
+} from 'react-native';
 
 
 interface PostData {
@@ -51,10 +68,19 @@ export default function ProfileScreen() {
       ]
     );
   };
+  
   const [posts, setPosts] = useState<PostFeedItemProps[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
+  
+  // Equipment modal state
+  const [showCameraModal, setShowCameraModal] = useState(false);
+  const [showLensModal, setShowLensModal] = useState(false);
+  const [cameras, setCameras] = useState<Camera[]>([]);
+  const [lenses, setLenses] = useState<Lens[]>([]);
+  const [cameraSearchQuery, setCameraSearchQuery] = useState('');
+  const [lensSearchQuery, setLensSearchQuery] = useState('');
+  const [equipmentLoading, setEquipmentLoading] = useState(false);
 
   const profileData = {
     user_id: user?.id,
@@ -84,7 +110,7 @@ export default function ProfileScreen() {
       const { data, error: rpcError } = await executeSQLFunction<PostData[]>(
         'get_user_posts1',
         { 
-          p_current_user_id: profile.user_id,  // Remove optional chaining since we checked above
+          p_current_user_id: profile.user_id,
           p_limit: 20,
           p_offset: 0,
           p_profile_user_id: profile.user_id
@@ -106,14 +132,14 @@ export default function ProfileScreen() {
           uploaded_at: post.uploaded_at,
           captured_at: post.captured_at,
           user_id: profile?.user_id ?? null,
-          username: profileData.username, // TODO: Get from user query
-          profile_pic: profileData.profile_pic, // TODO: Get from user query
-          handle: null, // TODO: Get from user query
+          username: profileData.username,
+          profile_pic: profileData.profile_pic,
+          handle: null,
           photo_urls: post.photo_urls && post.photo_urls.length > 0 
             ? post.photo_urls 
-            : ['https://via.placeholder.com/400x400'], // Fallback if no photos
-          photo_width: null, // Not in response, will default to 1:1
-          photo_height: null, // Not in response, will default to 1:1
+            : ['https://via.placeholder.com/400x400'],
+          photo_width: null,
+          photo_height: null,
           like_count: post.like_count,
           comment_count: post.comment_count,
           is_liked: post.is_liked_by_user,
@@ -134,12 +160,106 @@ export default function ProfileScreen() {
     }
   };
 
+  // Fetch all cameras
+  const fetchCameras = async () => {
+    try {
+      setEquipmentLoading(true);
+      const { data, error } = await getAllCameras();
+      if (error) {
+        Alert.alert('Error', error.message || 'Failed to fetch cameras');
+      } else if (data) {
+        setCameras(data);
+      }
+    } catch (err: any) {
+      console.error('Error fetching cameras:', err);
+      Alert.alert('Error', err.message || 'Failed to fetch cameras');
+    } finally {
+      setEquipmentLoading(false);
+    }
+  };
+
+  // Fetch all lenses
+  const fetchLenses = async () => {
+    try {
+      setEquipmentLoading(true);
+      const { data, error } = await getAllLenses();
+      if (error) {
+        Alert.alert('Error', error.message || 'Failed to fetch lenses');
+      } else if (data) {
+        setLenses(data);
+      }
+    } catch (err: any) {
+      console.error('Error fetching lenses:', err);
+      Alert.alert('Error', err.message || 'Failed to fetch lenses');
+    } finally {
+      setEquipmentLoading(false);
+    }
+  };
+
+  // Handle camera selection
+  const handleCameraSelect = async (camera: Camera) => {
+    if (!user?.id) {
+      Alert.alert('Error', 'You must be logged in');
+      return;
+    }
+
+    try {
+      setEquipmentLoading(true);
+      const { data, error } = await addUserCamera({
+        userId: user.id,
+        cameraId: camera.camera_id,
+      });
+
+      if (error) {
+        Alert.alert('Error', error.message || 'Failed to add camera');
+      } else {
+        Alert.alert('Success', `${camera.brand} ${camera.model} added to your profile`);
+        setShowCameraModal(false);
+        setCameraSearchQuery('');
+      }
+    } catch (err: any) {
+      console.error('Error adding camera:', err);
+      Alert.alert('Error', err.message || 'Failed to add camera');
+    } finally {
+      setEquipmentLoading(false);
+    }
+  };
+
+  // Handle lens selection
+  const handleLensSelect = async (lens: Lens) => {
+    if (!user?.id) {
+      Alert.alert('Error', 'You must be logged in');
+      return;
+    }
+
+    try {
+      setEquipmentLoading(true);
+      const { data, error } = await addUserLens({
+        userId: user.id,
+        lensId: lens.lens_id,
+      });
+
+      if (error) {
+        Alert.alert('Error', error.message || 'Failed to add lens');
+      } else {
+        Alert.alert('Success', `${lens.brand} ${lens.model} added to your profile`);
+        setShowLensModal(false);
+        setLensSearchQuery('');
+      }
+    } catch (err: any) {
+      console.error('Error adding lens:', err);
+      Alert.alert('Error', err.message || 'Failed to add lens');
+    } finally {
+      setEquipmentLoading(false);
+    }
+  };
+
   // Update the useEffect to wait for profile to load
   useEffect(() => {
     if (profile?.user_id) {
       fetchPosts();
     }
-  }, [profile?.user_id]); // Re-run when profile.user_id becomes available
+  }, [profile?.user_id]);
 
   const handleDeletePost = async (postId: number) => {
     if (!user?.id) {
@@ -212,40 +332,40 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-        {/* Username and Edit Profile Button */}
-        <View style={styles.usernameSection}>
-          <Text style={[styles.username, { color: colors.text }]}>
-            {profileData.username}
-          </Text>
-          <View style={styles.buttonRow}>
-            <TouchableOpacity 
-              style={[styles.editButton, { 
-                backgroundColor: colors.secondaryBackground,
-                borderColor: colors.border,
-                flex: 1,
-                marginRight: 8,
-              }]}
-            >
-              <Text style={[styles.editButtonText, { color: colors.text }]}>
-                Edit profile
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.signOutButton, { 
-                backgroundColor: colors.secondaryBackground,
-                borderColor: colors.border,
-                flex: 1,
-                marginLeft: 8,
-              }]}
-              onPress={handleSignOut}
-            >
-              <FontAwesome name="sign-out" size={16} color={colors.text} />
-              <Text style={[styles.editButtonText, { color: colors.text, marginLeft: 6 }]}>
-                Sign Out
-              </Text>
-            </TouchableOpacity>
-          </View>
+      {/* Username and Edit Profile Button */}
+      <View style={styles.usernameSection}>
+        <Text style={[styles.username, { color: colors.text }]}>
+          {profileData.username}
+        </Text>
+        <View style={styles.buttonRow}>
+          <TouchableOpacity 
+            style={[styles.editButton, { 
+              backgroundColor: colors.secondaryBackground,
+              borderColor: colors.border,
+              flex: 1,
+              marginRight: 8,
+            }]}
+          >
+            <Text style={[styles.editButtonText, { color: colors.text }]}>
+              Edit profile
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.signOutButton, { 
+              backgroundColor: colors.secondaryBackground,
+              borderColor: colors.border,
+              flex: 1,
+              marginLeft: 8,
+            }]}
+            onPress={handleSignOut}
+          >
+            <FontAwesome name="sign-out" size={16} color={colors.text} />
+            <Text style={[styles.editButtonText, { color: colors.text, marginLeft: 6 }]}>
+              Sign Out
+            </Text>
+          </TouchableOpacity>
         </View>
+      </View>
 
       {/* Bio Section */}
       <View style={styles.bioSection}>
@@ -256,6 +376,30 @@ export default function ProfileScreen() {
           {profileData.bio}
         </Text>
       </View>
+
+      {/* Equipment Buttons */}
+      <View style={styles.equipmentButtonsRow}>
+        <TouchableOpacity
+          style={[styles.equipmentButton, { backgroundColor: colors.tint }]}
+          onPress={async () => {
+            setShowCameraModal(true);
+            await fetchCameras();
+          }}
+        >
+          <FontAwesome name="camera" size={16} color="#fff" />
+          <Text style={styles.equipmentButtonText}>Add Camera</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.equipmentButton, { backgroundColor: colors.tint }]}
+          onPress={async () => {
+            setShowLensModal(true);
+            await fetchLenses();
+          }}
+        >
+          <FontAwesome name="circle" size={16} color="#fff" />
+          <Text style={styles.equipmentButtonText}>Add Lens</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -264,9 +408,6 @@ export default function ProfileScreen() {
       return (
         <View style={styles.emptyContainer}>
           <ActivityIndicator size="large" color={colors.tint} />
-          <Text style={[styles.emptyText, { color: colors.tabIconDefault, marginTop: 16 }]}>
-            Loading posts...
-          </Text>
         </View>
       );
     }
@@ -274,7 +415,7 @@ export default function ProfileScreen() {
     if (error) {
       return (
         <View style={styles.emptyContainer}>
-          <Text style={[styles.emptyText, { color: '#ff3040' }]}>
+          <Text style={[styles.emptyText, { color: colors.text }]}>
             Error: {error}
           </Text>
         </View>
@@ -283,42 +424,206 @@ export default function ProfileScreen() {
 
     return (
       <View style={styles.emptyContainer}>
-        <Text style={[styles.emptyText, { color: colors.tabIconDefault }]}>
+        <Text style={[styles.emptyText, { color: colors.text }]}>
           No posts yet
         </Text>
       </View>
     );
   };
 
+  // Filter cameras based on search query
+  const filteredCameras = cameras.filter((camera) => {
+    if (!cameraSearchQuery.trim()) return true;
+    const query = cameraSearchQuery.toLowerCase();
+    return (
+      camera.brand.toLowerCase().includes(query) ||
+      camera.model.toLowerCase().includes(query)
+    );
+  });
+
+  // Filter lenses based on search query
+  const filteredLenses = lenses.filter((lens) => {
+    if (!lensSearchQuery.trim()) return true;
+    const query = lensSearchQuery.toLowerCase();
+    return (
+      lens.brand.toLowerCase().includes(query) ||
+      lens.model.toLowerCase().includes(query)
+    );
+  });
+
   return (
-    <FlatList
-      data={posts}
-      renderItem={renderPost}
-      keyExtractor={(item) => item.post_id.toString()}
-      ListHeaderComponent={renderHeader}
-      ListEmptyComponent={renderEmpty}
-      style={[styles.list, { backgroundColor: colors.background }]}
-      contentContainerStyle={[
-        (posts.length === 0 || loading) && styles.emptyListContainer
-      ]}
-      showsVerticalScrollIndicator={false}
-      refreshing={loading}
-      onRefresh={fetchPosts}
-    />
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <FlatList
+        data={posts}
+        renderItem={renderPost}
+        keyExtractor={(item) => item.post_id.toString()}
+        ListHeaderComponent={renderHeader}
+        ListEmptyComponent={renderEmpty}
+        contentContainerStyle={posts.length === 0 ? styles.emptyListContainer : undefined}
+        refreshing={loading}
+        onRefresh={fetchPosts}
+      />
+
+      {/* Camera Selection Modal */}
+      <Modal
+        visible={showCameraModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => {
+          setShowCameraModal(false);
+          setCameraSearchQuery('');
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Select Camera</Text>
+              <TouchableOpacity onPress={() => {
+                setShowCameraModal(false);
+                setCameraSearchQuery('');
+              }}>
+                <FontAwesome name="times" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+            
+            <TextInput
+              style={[styles.searchInput, { 
+                backgroundColor: colors.secondaryBackground, 
+                color: colors.text, 
+                borderColor: colors.border 
+              }]}
+              placeholder="Search cameras..."
+              placeholderTextColor={colors.tabIconDefault}
+              value={cameraSearchQuery}
+              onChangeText={setCameraSearchQuery}
+              autoFocus={true}
+            />
+
+            {equipmentLoading ? (
+              <View style={styles.modalLoadingContainer}>
+                <ActivityIndicator size="large" color={colors.tint} />
+              </View>
+            ) : (
+              <FlatList
+                data={filteredCameras}
+                keyExtractor={(item) => item.camera_id.toString()}
+                renderItem={({ item: camera }) => (
+                  <TouchableOpacity
+                    style={[styles.equipmentItem, { 
+                      backgroundColor: colors.secondaryBackground,
+                      borderColor: colors.border 
+                    }]}
+                    onPress={() => handleCameraSelect(camera)}
+                  >
+                    <View style={styles.equipmentItemContent}>
+                      <Text style={[styles.equipmentItemName, { color: colors.text }]}>
+                        {camera.brand} {camera.model}
+                      </Text>
+                      {camera.sensor_type && (
+                        <Text style={[styles.equipmentItemDetail, { color: colors.tabIconDefault }]}>
+                          {camera.sensor_type} • {camera.camera_type || 'Camera'}
+                        </Text>
+                      )}
+                    </View>
+                    <FontAwesome name="chevron-right" size={16} color={colors.tabIconDefault} />
+                  </TouchableOpacity>
+                )}
+                style={styles.modalList}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Lens Selection Modal */}
+      <Modal
+        visible={showLensModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => {
+          setShowLensModal(false);
+          setLensSearchQuery('');
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Select Lens</Text>
+              <TouchableOpacity onPress={() => {
+                setShowLensModal(false);
+                setLensSearchQuery('');
+              }}>
+                <FontAwesome name="times" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+            
+            <TextInput
+              style={[styles.searchInput, { 
+                backgroundColor: colors.secondaryBackground, 
+                color: colors.text, 
+                borderColor: colors.border 
+              }]}
+              placeholder="Search lenses..."
+              placeholderTextColor={colors.tabIconDefault}
+              value={lensSearchQuery}
+              onChangeText={setLensSearchQuery}
+              autoFocus={true}
+            />
+
+            {equipmentLoading ? (
+              <View style={styles.modalLoadingContainer}>
+                <ActivityIndicator size="large" color={colors.tint} />
+              </View>
+            ) : (
+              <FlatList
+                data={filteredLenses}
+                keyExtractor={(item) => item.lens_id.toString()}
+                renderItem={({ item: lens }) => (
+                  <TouchableOpacity
+                    style={[styles.equipmentItem, { 
+                      backgroundColor: colors.secondaryBackground,
+                      borderColor: colors.border 
+                    }]}
+                    onPress={() => handleLensSelect(lens)}
+                  >
+                    <View style={styles.equipmentItemContent}>
+                      <Text style={[styles.equipmentItemName, { color: colors.text }]}>
+                        {lens.brand} {lens.model}
+                      </Text>
+                      {(lens.focal_length_min || lens.focal_length_max || lens.lens_type) && (
+                        <Text style={[styles.equipmentItemDetail, { color: colors.tabIconDefault }]}>
+                          {lens.focal_length_min && lens.focal_length_max
+                            ? `${lens.focal_length_min === lens.focal_length_max ? lens.focal_length_min : `${lens.focal_length_min}-${lens.focal_length_max}`}mm`
+                            : ''}
+                          {lens.focal_length_min && lens.lens_type ? ' • ' : ''}
+                          {lens.lens_type || ''}
+                          {lens.aperture_max && ` • f/${lens.aperture_max}`}
+                        </Text>
+                      )}
+                    </View>
+                    <FontAwesome name="chevron-right" size={16} color={colors.tabIconDefault} />
+                  </TouchableOpacity>
+                )}
+                style={styles.modalList}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  list: {
+  container: {
     flex: 1,
   },
   emptyListContainer: {
     flexGrow: 1,
   },
   header: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 16,
+    padding: 16,
+    paddingBottom: 8,
   },
   topSection: {
     flexDirection: 'row',
@@ -326,13 +631,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   profilePictureContainer: {
-    marginRight: 20,
+    marginRight: 16,
   },
   profilePicture: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    borderWidth: 2,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 1,
   },
   statsContainer: {
     flexDirection: 'row',
@@ -353,42 +658,44 @@ const styles = StyleSheet.create({
   usernameSection: {
     marginBottom: 12,
   },
+  username: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
   buttonRow: {
     flexDirection: 'row',
-    width: '100%',
-  },
-  signOutButton: {
-    borderRadius: 6,
-    borderWidth: 1,
-    paddingVertical: 6,
-    paddingHorizontal: 0,
     alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  username: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 12,
   },
   editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     borderRadius: 6,
     borderWidth: 1,
-    paddingVertical: 6,
-    paddingHorizontal: 0,
+  },
+  signOutButton: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    borderWidth: 1,
   },
   editButtonText: {
     fontSize: 14,
     fontWeight: '600',
   },
   bioSection: {
-    marginBottom: 8,
+    marginBottom: 16,
   },
   name: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
-    marginBottom: 2,
+    marginBottom: 4,
   },
   bio: {
     fontSize: 14,
@@ -402,5 +709,84 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
+  },
+  equipmentButtonsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  equipmentButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    gap: 8,
+  },
+  equipmentButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: '85%',
+    minHeight: '70%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  searchInput: {
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    fontSize: 16,
+    borderWidth: 1,
+  },
+  modalList: {
+    flex: 1,
+  },
+  modalLoadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  equipmentItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  equipmentItemContent: {
+    flex: 1,
+  },
+  equipmentItemName: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  equipmentItemDetail: {
+    fontSize: 14,
   },
 });

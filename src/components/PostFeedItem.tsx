@@ -3,7 +3,7 @@ import { Text, View } from '@/src/components/Themed';
 import { useColorScheme } from '@/src/components/useColorScheme';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useRef, useState } from 'react';
-import { Alert, Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { Alert, Animated, Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 
 const { width } = Dimensions.get('window');
 
@@ -25,6 +25,14 @@ export interface PostFeedItemProps {
   is_liked?: boolean;
   current_user_id?: string | null; // Current authenticated user's ID
   onDelete?: (postId: number) => void; // Callback when post is deleted
+  camera_brand?: string | null;
+  camera_model?: string | null;
+  camera_nickname?: string | null;
+  lens_brand?: string | null;
+  lens_model?: string | null;
+  lens_nickname?: string | null;
+  lens_focal_length_min?: number | null;
+  lens_focal_length_max?: number | null;
 }
 
 export default function PostFeedItem({
@@ -44,11 +52,21 @@ export default function PostFeedItem({
   user_id,
   current_user_id,
   onDelete,
+  camera_brand,
+  camera_model,
+  camera_nickname,
+  lens_brand,
+  lens_model,
+  lens_nickname,
+  lens_focal_length_min,
+  lens_focal_length_max,
 }: PostFeedItemProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const scrollViewRef = useRef<ScrollView>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isEquipmentExpanded, setIsEquipmentExpanded] = useState(false);
+  const equipmentHeight = useRef(new Animated.Value(0)).current;
 
   // Support both photo_url (legacy) and photo_urls (new)
   const images = photo_urls && photo_urls.length > 0 
@@ -84,6 +102,27 @@ export default function PostFeedItem({
 
   const displayName = handle || username;
   const isOwnPost = current_user_id && user_id && current_user_id === user_id;
+  const hasEquipment = (camera_brand && camera_model) || (lens_brand && lens_model);
+
+  const toggleEquipment = () => {
+    const toValue = isEquipmentExpanded ? 0 : 1;
+    Animated.timing(equipmentHeight, {
+      toValue,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+    setIsEquipmentExpanded(!isEquipmentExpanded);
+  };
+
+  const getLensDisplay = () => {
+    if (!lens_brand || !lens_model) return null;
+    const focalLength = lens_focal_length_min && lens_focal_length_max
+      ? lens_focal_length_min === lens_focal_length_max
+        ? `${lens_focal_length_min}mm`
+        : `${lens_focal_length_min}-${lens_focal_length_max}mm`
+      : '';
+    return `${lens_brand} ${lens_model}${focalLength ? ` (${focalLength})` : ''}`;
+  };
 
   const handleDeletePress = () => {
     Alert.alert(
@@ -223,6 +262,55 @@ export default function PostFeedItem({
         </TouchableOpacity>
       )}
 
+      {/* Equipment Section */}
+      {hasEquipment && (
+        <View style={styles.equipmentContainer}>
+          <TouchableOpacity onPress={toggleEquipment} style={styles.equipmentToggle}>
+            <FontAwesome
+              name={isEquipmentExpanded ? 'chevron-up' : 'chevron-down'}
+              size={12}
+              color={colors.tabIconDefault}
+            />
+            <Text style={[styles.equipmentToggleText, { color: colors.tabIconDefault }]}>
+              {isEquipmentExpanded ? 'Hide Equipment' : 'Show Equipment'}
+            </Text>
+          </TouchableOpacity>
+          <Animated.View
+            style={[
+              styles.equipmentContent,
+              {
+                maxHeight: equipmentHeight.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, 200],
+                }),
+                opacity: equipmentHeight,
+              },
+            ]}
+          >
+            <View style={styles.equipmentDetails}>
+              {camera_brand && camera_model && (
+                <View style={styles.equipmentRow}>
+                  <FontAwesome name="camera" size={14} color={colors.tabIconDefault} />
+                  <Text style={[styles.equipmentText, { color: colors.tabIconDefault }]}>
+                    {camera_brand} {camera_model}
+                    {camera_nickname && ` (${camera_nickname})`}
+                  </Text>
+                </View>
+              )}
+              {lens_brand && lens_model && (
+                <View style={styles.equipmentRow}>
+                  <FontAwesome name="circle" size={14} color={colors.tabIconDefault} />
+                  <Text style={[styles.equipmentText, { color: colors.tabIconDefault }]}>
+                    {getLensDisplay()}
+                    {lens_nickname && ` (${lens_nickname})`}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </Animated.View>
+        </View>
+      )}
+
       {/* Timestamp */}
       <Text style={[styles.timestamp, { color: colors.tabIconDefault }]}>
         {formatRelativeTime(uploaded_at)}
@@ -325,6 +413,35 @@ const styles = StyleSheet.create({
     fontSize: 12,
     paddingHorizontal: 12,
     marginBottom: 8,
+  },
+  equipmentContainer: {
+    paddingHorizontal: 12,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  equipmentToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 4,
+  },
+  equipmentToggleText: {
+    fontSize: 12,
+  },
+  equipmentContent: {
+    overflow: 'hidden',
+  },
+  equipmentDetails: {
+    paddingTop: 8,
+    gap: 8,
+  },
+  equipmentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  equipmentText: {
+    fontSize: 12,
   },
 });
 

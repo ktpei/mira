@@ -2,6 +2,7 @@ import Colors from '@/constants/Colors';
 import { Text, View } from '@/src/components/Themed';
 import { useColorScheme } from '@/src/components/useColorScheme';
 import { useAuth } from '@/src/contexts/AuthContext';
+import { getUserCameras, getUserLenses, type UserCamera, type UserLens } from '@/src/server/equipment';
 import { createOrFindLocation } from '@/src/server/locations';
 import { type Visibility } from '@/src/server/posts';
 import { executeSQLFunction } from '@/src/server/supabase';
@@ -9,7 +10,7 @@ import { uploadMultipleImagesToStorage } from '@/src/utils/storage';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -40,9 +41,27 @@ export default function CreateScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [userCameras, setUserCameras] = useState<UserCamera[]>([]);
+  const [userLenses, setUserLenses] = useState<UserLens[]>([]);
+  const [selectedCameraId, setSelectedCameraId] = useState<number | null>(null);
+  const [selectedLensId, setSelectedLensId] = useState<number | null>(null);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { user } = useAuth();
+
+  // Fetch user equipment on mount
+  useEffect(() => {
+    const fetchEquipment = async () => {
+      if (!user?.id) return;
+      const [camerasResult, lensesResult] = await Promise.all([
+        getUserCameras(user.id),
+        getUserLenses(user.id),
+      ]);
+      if (camerasResult.data) setUserCameras(camerasResult.data);
+      if (lensesResult.data) setUserLenses(lensesResult.data);
+    };
+    fetchEquipment();
+  }, [user?.id]);
 
   const pickImage = async () => {
     // Request permissions
@@ -201,7 +220,7 @@ export default function CreateScreen() {
         }
       }
 
-      // Create the post with photo URLs
+      // Create the post with photo URLs and equipment
       const { data, error } = await executeSQLFunction('create_post_will', {
         p_user_id: user.id,
         p_caption: caption.trim() || null,
@@ -209,6 +228,8 @@ export default function CreateScreen() {
         p_captured_at: new Date().toISOString(),
         p_visibility: visibility,
         p_photo_urls: photoUrls.length > 0 ? photoUrls : null,
+        p_user_camera_id: selectedCameraId,
+        p_user_lens_id: selectedLensId,
       });
 
       if (error) {
@@ -233,6 +254,8 @@ export default function CreateScreen() {
         setUseCurrentLocation(false);
         setVisibility('public');
         setSelectedImages([]);
+        setSelectedCameraId(null);
+        setSelectedLensId(null);
       } else {
         Alert.alert('Error', 'Post creation failed. Please try again.');
       }
@@ -345,6 +368,106 @@ export default function CreateScreen() {
               </Text>
             </TouchableOpacity>
           ))}
+        </View>
+
+        <Text style={[styles.label, { color: colors.text }]}>Equipment (Optional)</Text>
+        <View style={styles.equipmentContainer}>
+          <View style={styles.equipmentPicker}>
+            <Text style={[styles.equipmentLabel, { color: colors.tabIconDefault }]}>Camera</Text>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              style={styles.equipmentScrollView}
+            >
+              <TouchableOpacity
+                style={[
+                  styles.equipmentOption,
+                  selectedCameraId === null && styles.equipmentOptionSelected,
+                  { 
+                    backgroundColor: selectedCameraId === null ? colors.tint : colors.secondaryBackground,
+                    borderColor: colors.border
+                  }
+                ]}
+                onPress={() => setSelectedCameraId(null)}
+              >
+                <Text style={[
+                  styles.equipmentOptionText,
+                  { color: selectedCameraId === null ? '#fff' : colors.text }
+                ]}>
+                  None
+                </Text>
+              </TouchableOpacity>
+              {userCameras.map((camera) => (
+                <TouchableOpacity
+                  key={camera.user_camera_id}
+                  style={[
+                    styles.equipmentOption,
+                    selectedCameraId === camera.user_camera_id && styles.equipmentOptionSelected,
+                    { 
+                      backgroundColor: selectedCameraId === camera.user_camera_id ? colors.tint : colors.secondaryBackground,
+                      borderColor: colors.border
+                    }
+                  ]}
+                  onPress={() => setSelectedCameraId(camera.user_camera_id)}
+                >
+                  <Text style={[
+                    styles.equipmentOptionText,
+                    { color: selectedCameraId === camera.user_camera_id ? '#fff' : colors.text }
+                  ]} numberOfLines={1}>
+                    {camera.nickname || `${camera.brand} ${camera.model}`}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+          <View style={styles.equipmentPicker}>
+            <Text style={[styles.equipmentLabel, { color: colors.tabIconDefault }]}>Lens</Text>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              style={styles.equipmentScrollView}
+            >
+              <TouchableOpacity
+                style={[
+                  styles.equipmentOption,
+                  selectedLensId === null && styles.equipmentOptionSelected,
+                  { 
+                    backgroundColor: selectedLensId === null ? colors.tint : colors.secondaryBackground,
+                    borderColor: colors.border
+                  }
+                ]}
+                onPress={() => setSelectedLensId(null)}
+              >
+                <Text style={[
+                  styles.equipmentOptionText,
+                  { color: selectedLensId === null ? '#fff' : colors.text }
+                ]}>
+                  None
+                </Text>
+              </TouchableOpacity>
+              {userLenses.map((lens) => (
+                <TouchableOpacity
+                  key={lens.user_lens_id}
+                  style={[
+                    styles.equipmentOption,
+                    selectedLensId === lens.user_lens_id && styles.equipmentOptionSelected,
+                    { 
+                      backgroundColor: selectedLensId === lens.user_lens_id ? colors.tint : colors.secondaryBackground,
+                      borderColor: colors.border
+                    }
+                  ]}
+                  onPress={() => setSelectedLensId(lens.user_lens_id)}
+                >
+                  <Text style={[
+                    styles.equipmentOptionText,
+                    { color: selectedLensId === lens.user_lens_id ? '#fff' : colors.text }
+                  ]} numberOfLines={1}>
+                    {lens.nickname || `${lens.brand} ${lens.model}`}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
         </View>
 
         <Text style={[styles.label, { color: colors.text }]}>Location (Optional)</Text>
@@ -580,6 +703,33 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
     borderRadius: 12,
     padding: 2,
+  },
+  equipmentContainer: {
+    marginBottom: 16,
+  },
+  equipmentPicker: {
+    marginBottom: 12,
+  },
+  equipmentLabel: {
+    fontSize: 12,
+    marginBottom: 6,
+  },
+  equipmentScrollView: {
+    flexDirection: 'row',
+  },
+  equipmentOption: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginRight: 8,
+  },
+  equipmentOptionSelected: {
+    // Additional styles handled inline
+  },
+  equipmentOptionText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
 
