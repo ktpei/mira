@@ -1,5 +1,4 @@
 import Colors from '@/constants/Colors';
-import { Text, View } from '@/src/components/Themed';
 import { useColorScheme } from '@/src/components/useColorScheme';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { createOrFindLocation } from '@/src/server/locations';
@@ -15,9 +14,8 @@ import {
   Alert,
   Image,
   ScrollView,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity
+  StyleSheet, Text, TextInput,
+  TouchableOpacity, View
 } from 'react-native';
 interface LocationState {
   latitude: number | null;

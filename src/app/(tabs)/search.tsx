@@ -2,12 +2,11 @@ import { executeSQLFunction } from '@/src/server/supabase';
 import { StyleSheet } from 'react-native';
 
 import Colors from '@/constants/Colors';
-import { Text, View } from '@/src/components/Themed';
 import { useColorScheme } from '@/src/components/useColorScheme';
 import { useAuth } from '@/src/contexts/AuthContext';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, TextInput, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, FlatList, Image, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface SearchUserResult {
   user_id: string; // UUID

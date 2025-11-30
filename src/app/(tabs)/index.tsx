@@ -2,7 +2,7 @@ import { ActivityIndicator, Alert, FlatList, RefreshControl, StyleSheet } from '
 
 import Colors from '@/constants/Colors';
 import PostFeedItem, { PostFeedItemProps } from '@/src/components/PostFeedItem';
-import { Text, View } from '@/src/components/Themed';
+import { Text, View } from 'react-native';
 import { useColorScheme } from '@/src/components/useColorScheme';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { deletePost, getFeedPosts } from '@/src/server/posts';

@@ -1,9 +1,8 @@
 import Colors from '@/constants/Colors';
-import { Text, View } from '@/src/components/Themed';
 import { useColorScheme } from '@/src/components/useColorScheme';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useRef, useState } from 'react';
-import { Alert, Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { Alert, Dimensions, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const { width } = Dimensions.get('window');
 

@@ -1,12 +1,11 @@
 import Colors from '@/constants/Colors';
 import LocalPostsFeed from '@/src/components/LocalPostsFeed';
-import { Text, View } from '@/src/components/Themed';
 import { useColorScheme } from '@/src/components/useColorScheme';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { getPublicPostsWithLocations, type PostWithLocation } from '@/src/server/map';
 import * as Location from 'expo-location';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Dimensions, Modal, StyleSheet, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, Dimensions, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import MapView, { Marker, Region } from 'react-native-maps';
 
 const { width, height } = Dimensions.get('window');

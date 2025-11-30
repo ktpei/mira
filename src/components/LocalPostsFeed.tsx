@@ -1,6 +1,6 @@
 import Colors from '@/constants/Colors';
 import PostFeedItem, { PostFeedItemProps } from '@/src/components/PostFeedItem';
-import { Text, View } from '@/src/components/Themed';
+import { Text, View } from 'react-native';
 import { useColorScheme } from '@/src/components/useColorScheme';
 import { getLocalPosts, type LocalPost } from '@/src/server/map';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
