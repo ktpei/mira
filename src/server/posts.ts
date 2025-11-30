@@ -18,6 +18,14 @@ export interface FeedPostData {
   handle: string | null;
   is_liked_by_user: boolean;
   visibility: string;
+  camera_brand: string | null;
+  camera_model: string | null;
+  camera_nickname: string | null;
+  lens_brand: string | null;
+  lens_model: string | null;
+  lens_nickname: string | null;
+  lens_focal_length_min: number | null;
+  lens_focal_length_max: number | null;
 }
 
 export interface CreatePostParams {
@@ -118,6 +126,14 @@ export async function getFeedPosts(
         like_count: post.like_count,
         comment_count: post.comment_count,
         is_liked: post.is_liked_by_user,
+        camera_brand: post.camera_brand || null,
+        camera_model: post.camera_model || null,
+        camera_nickname: post.camera_nickname || null,
+        lens_brand: post.lens_brand || null,
+        lens_model: post.lens_model || null,
+        lens_nickname: post.lens_nickname || null,
+        lens_focal_length_min: post.lens_focal_length_min || null,
+        lens_focal_length_max: post.lens_focal_length_max || null,
       }));
 
       return { data: mappedPosts, error: null };
