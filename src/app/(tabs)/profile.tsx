@@ -58,9 +58,11 @@ export default function ProfileScreen() {
 
   const profileData = {
     user_id: user?.id,
-    username: profile?.username || user?.email || 'Unknown User',
-    name: profile?.first_name + ' ' + profile?.last_name || 'Unknown Name',
-    bio: profile?.bio || 'Unknown Bio',
+    username: profile?.username || user?.email || 'Guest',
+    name: profile?.first_name && profile?.last_name 
+      ? `${profile.first_name} ${profile.last_name}` 
+      : 'Guest User',
+    bio: profile?.bio || 'Welcome to Mira! Sign in to view your profile.',
     profile_pic: profile?.profile_pic || 'https://via.placeholder.com/100',
     posts: 0,
     followers: 0,
@@ -75,7 +77,7 @@ export default function ProfileScreen() {
       
       // Guard: Don't call the function if profile isn't loaded yet
       if (!profile?.user_id) {
-        setError('Profile not loaded yet');
+        setPosts([]); // Clear posts if no profile
         setLoading(false);
         return;
       }
@@ -138,6 +140,8 @@ export default function ProfileScreen() {
   useEffect(() => {
     if (profile?.user_id) {
       fetchPosts();
+    } else {
+      setPosts([]);
     }
   }, [profile?.user_id]); // Re-run when profile.user_id becomes available
 
@@ -237,11 +241,11 @@ export default function ProfileScreen() {
                 flex: 1,
                 marginLeft: 8,
               }]}
-              onPress={handleSignOut}
+              onPress={user ? handleSignOut : () => router.push('/screens/login')}
             >
-              <FontAwesome name="sign-out" size={16} color={colors.text} />
+              <FontAwesome name={user ? "sign-out" : "sign-in"} size={16} color={colors.text} />
               <Text style={[styles.editButtonText, { color: colors.text, marginLeft: 6 }]}>
-                Sign Out
+                {user ? "Sign Out" : "Sign In"}
               </Text>
             </TouchableOpacity>
           </View>
