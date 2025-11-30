@@ -23,7 +23,7 @@ import { getFollowerCount, getFollowingCount } from '@/src/server/users';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Image, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 
 interface PostData {
@@ -491,11 +491,11 @@ export default function ProfileScreen() {
                 flex: 1,
                 marginLeft: 8,
               }]}
-              onPress={handleSignOut}
+              onPress={user ? handleSignOut : () => router.push('/screens/login')}
             >
-              <FontAwesome name="sign-out" size={16} color={colors.text} />
+              <FontAwesome name={user ? "sign-out" : "sign-in"} size={16} color={colors.text} />
               <Text style={[styles.editButtonText, { color: colors.text, marginLeft: 6 }]}>
-                Sign Out
+                {user ? "Sign Out" : "Sign In"}
               </Text>
             </TouchableOpacity>
           </View>
