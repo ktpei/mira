@@ -1,4 +1,5 @@
 import { executeSQLFunction } from '@/src/server/supabase';
+import { toggleFollow } from '@/src/server/users';
 import { StyleSheet } from 'react-native';
 
 import Colors from '@/constants/Colors';
@@ -27,6 +28,7 @@ export default function SearchScreen() {
   const [users, setUsers] = useState<SearchUserResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [updatingFollow, setUpdatingFollow] = useState<string | null>(null);
   
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -103,6 +105,53 @@ export default function SearchScreen() {
       }
     };
   }, []);
+
+  // Handle follow/unfollow toggle
+  const handleToggleFollow = async (targetUserId: string, currentIsFollowing: boolean) => {
+    if (!user?.id) {
+      setError('You must be logged in to follow users');
+      return;
+    }
+
+    if (updatingFollow) return; // Prevent multiple simultaneous updates
+
+    setUpdatingFollow(targetUserId);
+    setError(null);
+
+    try {
+      const { success, action, newFollowerCount, error: followError } = await toggleFollow(
+        user.id, // Current user's UUID
+        targetUserId // Target user's UUID
+      );
+
+      if (followError) {
+        setError(followError.message || 'Failed to update follow status');
+        return;
+      }
+
+      if (success) {
+        // Update the local state
+        setUsers((prevUsers) =>
+          prevUsers.map((u) =>
+            u.user_id === targetUserId
+              ? {
+                  ...u,
+                  is_following: action === 'followed',
+                  follower_count: newFollowerCount,
+                }
+              : u
+          )
+        );
+      } else {
+        setError('Failed to update follow status');
+      }
+    } catch (err: any) {
+      console.error('Error toggling follow:', err);
+      setError('An unexpected error occurred');
+    } finally {
+      setUpdatingFollow(null);
+    }
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -200,14 +249,22 @@ export default function SearchScreen() {
                 style={[
                   styles.followButton, 
                   item.is_following && styles.followingButton,
-                  { backgroundColor: item.is_following ? colors.secondaryBackground : colors.tint }
+                  { backgroundColor: item.is_following ? colors.secondaryBackground : colors.tint },
+                  updatingFollow === item.user_id && { opacity: 0.6 }
                 ]}
+                onPress={() => handleToggleFollow(item.user_id, item.is_following)}
+                disabled={updatingFollow === item.user_id}
               >
                 <Text style={[
                   styles.followButtonText, 
                   { color: item.is_following ? colors.text : '#fff' }
                 ]}>
-                  {item.is_following ? 'Following' : 'Follow'}
+                  {updatingFollow === item.user_id 
+                    ? '...' 
+                    : item.is_following 
+                      ? 'Following' 
+                      : 'Follow'
+                  }
                 </Text>
               </TouchableOpacity>
             </TouchableOpacity>

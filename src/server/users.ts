@@ -74,3 +74,71 @@ export async function getFollowingCount(userId: string): Promise<{
   const { data, error } = await executeSQLFunction<number>('get_following_count', { p_user_id: userId });
   return { count: data ?? 0, error };
 }
+
+interface ToggleFollowResult {
+  success: boolean;
+  action: string; // 'followed' or 'unfollowed'
+  new_follower_count: number;
+}
+
+/**
+ * Toggle follow relationship between two users
+ * 
+ * @param followerId - UUID of the user who is following (current user)
+ * @param followeeId - UUID of the user being followed/unfollowed
+ * @returns Result with success status, action taken, and new follower count
+ */
+export async function toggleFollow(
+  followerId: string,
+  followeeId: string
+): Promise<{
+  success: boolean;
+  action: string | null;
+  newFollowerCount: number;
+  error: any;
+}> {
+  try {
+    const { data, error } = await executeSQLFunction<ToggleFollowResult[]>(
+      'toggle_follow',
+      {
+        p_follower_id: followerId, // UUID as string
+        p_followee_id: followeeId, // UUID as string
+      }
+    );
+
+    if (error) {
+      console.error('Error toggling follow:', error);
+      return {
+        success: false,
+        action: null,
+        newFollowerCount: 0,
+        error,
+      };
+    }
+
+    const result = data?.[0];
+    if (!result) {
+      return {
+        success: false,
+        action: null,
+        newFollowerCount: 0,
+        error: { message: 'No result returned from toggle_follow' },
+      };
+    }
+
+    return {
+      success: result.success,
+      action: result.action,
+      newFollowerCount: result.new_follower_count,
+      error: null,
+    };
+  } catch (err: any) {
+    console.error('Unexpected error toggling follow:', err);
+    return {
+      success: false,
+      action: null,
+      newFollowerCount: 0,
+      error: { message: err.message || 'Failed to toggle follow' },
+    };
+  }
+}
