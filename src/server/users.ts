@@ -142,3 +142,110 @@ export async function toggleFollow(
     };
   }
 }
+
+/**
+ * Remove a follower (current user removes someone who is following them)
+ * 
+ * @param currentUserId - UUID of the current user (the followee)
+ * @param followerId - UUID of the user to remove as a follower
+ * @returns Result with success status
+ */
+export async function removeFollower(
+  currentUserId: string,
+  followerId: string
+): Promise<{
+  success: boolean;
+  error: any;
+}> {
+  try {
+    // Reverse the parameters: follower_id is the one to remove, followee_id is current user
+    const { data, error } = await executeSQLFunction<ToggleFollowResult[]>(
+      'toggle_follow',
+      {
+        p_follower_id: followerId, // The person who is following (to be removed)
+        p_followee_id: currentUserId, // Current user (the one being followed)
+      }
+    );
+
+    if (error) {
+      console.error('Error removing follower:', error);
+      return {
+        success: false,
+        error,
+      };
+    }
+
+    const result = data?.[0];
+    if (!result || !result.success) {
+      return {
+        success: false,
+        error: { message: 'Failed to remove follower' },
+      };
+    }
+
+    // Only succeed if the action was 'unfollowed' (meaning they were following)
+    return {
+      success: result.action === 'unfollowed',
+      error: result.action !== 'unfollowed' ? { message: 'User was not following you' } : null,
+    };
+  } catch (err: any) {
+    console.error('Unexpected error removing follower:', err);
+    return {
+      success: false,
+      error: { message: err.message || 'Failed to remove follower' },
+    };
+  }
+}
+
+/**
+ * Unfollow a user (current user stops following someone)
+ * 
+ * @param currentUserId - UUID of the current user (the follower)
+ * @param followeeId - UUID of the user to unfollow
+ * @returns Result with success status
+ */
+export async function unfollow(
+  currentUserId: string,
+  followeeId: string
+): Promise<{
+  success: boolean;
+  error: any;
+}> {
+  try {
+    const { data, error } = await executeSQLFunction<ToggleFollowResult[]>(
+      'toggle_follow',
+      {
+        p_follower_id: currentUserId, // Current user (the follower)
+        p_followee_id: followeeId, // The person being unfollowed
+      }
+    );
+
+    if (error) {
+      console.error('Error unfollowing user:', error);
+      return {
+        success: false,
+        error,
+      };
+    }
+
+    const result = data?.[0];
+    if (!result || !result.success) {
+      return {
+        success: false,
+        error: { message: 'Failed to unfollow user' },
+      };
+    }
+
+    // Only succeed if the action was 'unfollowed' (meaning we were following)
+    return {
+      success: result.action === 'unfollowed',
+      error: result.action !== 'unfollowed' ? { message: 'You were not following this user' } : null,
+    };
+  } catch (err: any) {
+    console.error('Unexpected error unfollowing user:', err);
+    return {
+      success: false,
+      error: { message: err.message || 'Failed to unfollow user' },
+    };
+  }
+}

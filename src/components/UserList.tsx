@@ -17,6 +17,10 @@ interface UserListProps {
   error: string | null;
   onRefresh?: () => void;
   emptyMessage?: string;
+  showActionButton?: boolean;
+  actionButtonLabel?: string;
+  onActionPress?: (userId: string) => void;
+  actionButtonLoading?: string | null;
 }
 
 export default function UserList({ 
@@ -24,37 +28,62 @@ export default function UserList({
   loading, 
   error, 
   onRefresh,
-  emptyMessage = 'No users found'
+  emptyMessage = 'No users found',
+  showActionButton = false,
+  actionButtonLabel = 'Action',
+  onActionPress,
+  actionButtonLoading = null
 }: UserListProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
 
-  const renderItem = ({ item }: { item: UserListItem }) => (
-    <TouchableOpacity 
-      style={[styles.userItem, { borderBottomColor: colors.border }]}
-      onPress={() => {
-        // Navigate to user profile (future implementation)
-        // router.push(`/screens/user/${item.user_id}`);
-        console.log('Navigate to user:', item.username);
-      }}
-    >
-      <Image
-        source={{ uri: item.profile_pic || 'https://via.placeholder.com/50' }}
-        style={styles.avatar}
-      />
-      <View style={styles.userInfo}>
-        <Text style={[styles.username, { color: colors.text }]}>
-          {item.username}
-        </Text>
-        {item.full_name && (
-          <Text style={[styles.fullName, { color: colors.tabIconDefault }]}>
-            {item.full_name}
-          </Text>
+  const renderItem = ({ item }: { item: UserListItem }) => {
+    const isLoading = actionButtonLoading === item.user_id;
+    
+    return (
+      <View style={[styles.userItem, { borderBottomColor: colors.border }]}>
+        <TouchableOpacity 
+          style={styles.userContent}
+          onPress={() => {
+            // Navigate to user profile (future implementation)
+            // router.push(`/screens/user/${item.user_id}`);
+            console.log('Navigate to user:', item.username);
+          }}
+        >
+          <Image
+            source={{ uri: item.profile_pic || 'https://via.placeholder.com/50' }}
+            style={styles.avatar}
+          />
+          <View style={styles.userInfo}>
+            <Text style={[styles.username, { color: colors.text }]}>
+              {item.username}
+            </Text>
+            {item.full_name && (
+              <Text style={[styles.fullName, { color: colors.tabIconDefault }]}>
+                {item.full_name}
+              </Text>
+            )}
+          </View>
+        </TouchableOpacity>
+        {showActionButton && onActionPress && (
+          <TouchableOpacity
+            style={[
+              styles.actionButton,
+              { backgroundColor: colors.secondaryBackground },
+              isLoading && { opacity: 0.6 }
+            ]}
+            onPress={() => onActionPress(item.user_id)}
+            disabled={isLoading}
+          >
+            <Text style={[styles.actionButtonText, { color: colors.text }]}>
+              {isLoading ? '...' : actionButtonLabel}
+            </Text>
+          </TouchableOpacity>
         )}
       </View>
-    </TouchableOpacity>
-  );
+    );
+  };
 
   if (error) {
     return (
@@ -97,8 +126,14 @@ const styles = StyleSheet.create({
   userItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     padding: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  userContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
   avatar: {
     width: 50,
@@ -116,6 +151,16 @@ const styles = StyleSheet.create({
   fullName: {
     fontSize: 14,
     marginTop: 2,
+  },
+  actionButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 6,
+    marginLeft: 12,
+  },
+  actionButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
 
