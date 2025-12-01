@@ -46,9 +46,10 @@ export default function UserList({
         <TouchableOpacity 
           style={styles.userContent}
           onPress={() => {
-            // Navigate to user profile (future implementation)
-            // router.push(`/screens/user/${item.user_id}`);
-            console.log('Navigate to user:', item.username);
+            router.push({
+              pathname: '/screens/user-profile',
+              params: { userId: item.user_id }
+            });
           }}
         >
           <Image

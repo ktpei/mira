@@ -6,6 +6,7 @@ import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/src/components/useColorScheme';
 import { useAuth } from '@/src/contexts/AuthContext';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Image, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
@@ -24,6 +25,7 @@ export default function SearchScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { user } = useAuth();
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [users, setUsers] = useState<SearchUserResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -220,6 +222,12 @@ export default function SearchScreen() {
           renderItem={({ item }) => (
             <TouchableOpacity 
               style={[styles.userCard, { borderBottomColor: colors.border }]}
+              onPress={() => {
+                router.push({
+                  pathname: '/screens/user-profile',
+                  params: { userId: item.user_id }
+                });
+              }}
             >
               <Image
                 source={{ uri: item.profile_pic || 'https://via.placeholder.com/60' }}

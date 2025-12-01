@@ -1,7 +1,7 @@
 import UserList, { UserCard } from '@/src/components/UserList';
-import { getFollowers, removeFollower } from '@/src/server/users';
 import { useAuth } from '@/src/contexts/AuthContext';
-import { useLocalSearchParams } from 'expo-router';
+import { getFollowers, removeFollower } from '@/src/server/users';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 
 export default function FollowersScreen() {
@@ -69,17 +69,26 @@ export default function FollowersScreen() {
   const isOwnProfile = user?.id === userId;
 
   return (
-    <UserList
-      users={users}
-      loading={loading}
-      error={error}
-      onRefresh={fetchFollowers}
-      emptyMessage="No followers yet"
-      showActionButton={isOwnProfile}
-      actionButtonLabel="Remove"
-      onActionPress={handleRemoveFollower}
-      actionButtonLoading={removingFollower}
-    />
+    <>
+      <Stack.Screen 
+        options={{
+          title: 'Followers',
+          headerShown: true,
+          headerBackTitle: 'Back',
+        }}
+      />
+      <UserList
+        users={users}
+        loading={loading}
+        error={error}
+        onRefresh={fetchFollowers}
+        emptyMessage="No followers yet"
+        showActionButton={isOwnProfile}
+        actionButtonLabel="Remove"
+        onActionPress={handleRemoveFollower}
+        actionButtonLoading={removingFollower}
+      />
+    </>
   );
 }
 

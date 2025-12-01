@@ -1,7 +1,7 @@
 import UserList, { UserCard } from '@/src/components/UserList';
-import { getFollowing, unfollow } from '@/src/server/users';
 import { useAuth } from '@/src/contexts/AuthContext';
-import { useLocalSearchParams } from 'expo-router';
+import { getFollowing, unfollow } from '@/src/server/users';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 
 export default function FollowingScreen() {
@@ -69,17 +69,26 @@ export default function FollowingScreen() {
   const isOwnProfile = user?.id === userId;
 
   return (
-    <UserList
-      users={users}
-      loading={loading}
-      error={error}
-      onRefresh={fetchFollowing}
-      emptyMessage="Not following anyone yet"
-      showActionButton={isOwnProfile}
-      actionButtonLabel="Unfollow"
-      onActionPress={handleUnfollow}
-      actionButtonLoading={unfollowing}
-    />
+    <>
+      <Stack.Screen 
+        options={{
+          title: 'Following',
+          headerShown: true,
+          headerBackTitle: 'Back',
+        }}
+      />
+      <UserList
+        users={users}
+        loading={loading}
+        error={error}
+        onRefresh={fetchFollowing}
+        emptyMessage="Not following anyone yet"
+        showActionButton={isOwnProfile}
+        actionButtonLabel="Unfollow"
+        onActionPress={handleUnfollow}
+        actionButtonLoading={unfollowing}
+      />
+    </>
   );
 }
 
