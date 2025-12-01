@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-export interface UserListItem {
+export interface UserCard {
   user_id: string;
   username: string;
   full_name: string | null;
@@ -12,7 +12,7 @@ export interface UserListItem {
 }
 
 interface UserListProps {
-  users: UserListItem[];
+  users: UserCard[];
   loading: boolean;
   error: string | null;
   onRefresh?: () => void;
@@ -38,7 +38,7 @@ export default function UserList({
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
 
-  const renderItem = ({ item }: { item: UserListItem }) => {
+  const renderItem = ({ item }: { item: UserCard }) => {
     const isLoading = actionButtonLoading === item.user_id;
     
     return (

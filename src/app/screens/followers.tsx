@@ -1,4 +1,4 @@
-import UserList, { UserListItem } from '@/src/components/UserList';
+import UserList, { UserCard } from '@/src/components/UserList';
 import { getFollowers, removeFollower } from '@/src/server/users';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { useLocalSearchParams } from 'expo-router';
@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 export default function FollowersScreen() {
   const { userId } = useLocalSearchParams<{ userId: string }>();
   const { user } = useAuth();
-  const [users, setUsers] = useState<UserListItem[]>([]);
+  const [users, setUsers] = useState<UserCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [removingFollower, setRemovingFollower] = useState<string | null>(null);

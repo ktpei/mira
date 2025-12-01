@@ -10,7 +10,7 @@ export interface UserProfile {
   updated_at?: string;
 }
 
-export interface UserListItem {
+export interface UserCard {
   user_id: string;
   username: string;
   full_name: string | null;
@@ -46,17 +46,17 @@ export async function getUserProfile(userId: string): Promise<{
 }
 
 export async function getFollowers(userId: string): Promise<{
-  data: UserListItem[] | null;
+  data: UserCard[] | null;
   error: any;
 }> {
-  return executeSQLFunction<UserListItem[]>('get_user_followers', { p_user_id: userId });
+  return executeSQLFunction<UserCard[]>('get_user_followers', { p_user_id: userId });
 }
 
 export async function getFollowing(userId: string): Promise<{
-  data: UserListItem[] | null;
+  data: UserCard[] | null;
   error: any;
 }> {
-  return executeSQLFunction<UserListItem[]>('get_user_following', { p_user_id: userId });
+  return executeSQLFunction<UserCard[]>('get_user_following', { p_user_id: userId });
 }
 
 export async function getFollowerCount(userId: string): Promise<{
