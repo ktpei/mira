@@ -86,6 +86,15 @@ export default function PostFeedItem({
     setCurrentImageIndex(index);
   };
 
+  const [liked, setLiked] = useState(is_liked);
+  const [likes, setLikes] = useState(like_count);
+
+  const handleLikeToggle = () => {
+    const newValue = !liked;
+    setLiked(newValue);
+    setLikes(likes + (newValue ? 1 : -1));
+  };
+
   // Format relative time
   const formatRelativeTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -211,11 +220,11 @@ export default function PostFeedItem({
 
       {/* Interaction Buttons */}
       <View style={styles.actions}>
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity style={styles.actionButton} onPress={handleLikeToggle}>
           <FontAwesome
-            name={is_liked ? 'heart' : 'heart-o'}
+            name={liked ? 'heart' : 'heart-o'}
             size={24}
-            color={is_liked ? '#ff3040' : colors.text}
+            color={liked ? '#ff3040' : colors.text}
           />
         </TouchableOpacity>
         <TouchableOpacity style={styles.actionButton}>
