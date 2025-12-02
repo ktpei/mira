@@ -9,6 +9,7 @@ interface AuthContextType {
   profile: UserProfile | null;
   loading: boolean;
   initialized: boolean;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -17,6 +18,7 @@ const AuthContext = createContext<AuthContextType>({
   profile: null,
   loading: true,
   initialized: false,
+  refreshProfile: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -27,21 +29,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [initialized, setInitialized] = useState(false);
 
   // Load profile data when user changes
-  useEffect(() => {
-    const loadProfile = async () => {
-      if (user) {
-        const { profile, error } = await getUserProfile(user.id);
-        if (error) {
-          console.error('Error loading profile:', error);
-          setProfile(null);
-        } else {
-          setProfile(profile);
-        }
-      } else {
+  const loadProfile = async () => {
+    if (user) {
+      const { profile, error } = await getUserProfile(user.id);
+      if (error) {
+        console.error('Error loading profile:', error);
         setProfile(null);
+      } else {
+        setProfile(profile);
       }
-    };
+    } else {
+      setProfile(null);
+    }
+  };
 
+  useEffect(() => {
     loadProfile();
   }, [user]);
 
@@ -70,8 +72,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  const refreshProfile = async () => {
+    await loadProfile();
+  };
+
   return (
-    <AuthContext.Provider value={{ user, session, profile, loading, initialized }}>
+    <AuthContext.Provider value={{ user, session, profile, loading, initialized, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

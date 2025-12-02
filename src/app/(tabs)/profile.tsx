@@ -19,11 +19,13 @@ import {
   type UserLens,
 } from '@/src/server/equipment';
 import { deletePost } from '@/src/server/posts';
-import { getFollowerCount, getFollowingCount } from '@/src/server/users';
+import { getFollowerCount, getFollowingCount, updateProfile } from '@/src/server/users';
+import { uploadImageToStorage } from '@/src/utils/storage';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Image, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 
 interface PostData {
@@ -41,7 +43,7 @@ interface PostData {
 export default function ProfileScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const router = useRouter();
 
   const handleSignOut = async () => {
@@ -85,6 +87,16 @@ export default function ProfileScreen() {
   const [userCameras, setUserCameras] = useState<UserCamera[]>([]);
   const [userLenses, setUserLenses] = useState<UserLens[]>([]);
   const [showEquipmentDropdown, setShowEquipmentDropdown] = useState(false);
+
+  // Edit profile modal state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editUsername, setEditUsername] = useState('');
+  const [editFirstName, setEditFirstName] = useState('');
+  const [editLastName, setEditLastName] = useState('');
+  const [editBio, setEditBio] = useState('');
+  const [selectedProfilePic, setSelectedProfilePic] = useState<string | null>(null);
+  const [updatingProfile, setUpdatingProfile] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const profileData = {
     user_id: user?.id,
@@ -300,8 +312,115 @@ export default function ProfileScreen() {
   useEffect(() => {
     if (profile?.user_id) {
       fetchPosts();
+      fetchUserEquipment();
     }
   }, [profile?.user_id]);
+
+  // Open edit modal and populate with current values
+  const handleOpenEditModal = () => {
+    if (profile) {
+      setEditUsername(profile.username || '');
+      setEditFirstName(profile.first_name || '');
+      setEditLastName(profile.last_name || '');
+      setEditBio(profile.bio || '');
+      setSelectedProfilePic(null); // Reset selected image
+      setShowEditModal(true);
+    }
+  };
+
+  // Handle profile picture selection
+  const handlePickProfilePicture = async () => {
+    if (!user?.id) {
+      Alert.alert('Error', 'You must be logged in');
+      return;
+    }
+
+    try {
+      // Request permissions
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Sorry, we need camera roll permissions to upload profile pictures!'
+        );
+        return;
+      }
+
+      // Launch image picker
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setSelectedProfilePic(result.assets[0].uri);
+      }
+    } catch (err: any) {
+      console.error('Error picking image:', err);
+      Alert.alert('Error', err.message || 'Failed to pick image');
+    }
+  };
+
+  // Handle save profile changes
+  const handleSaveProfile = async () => {
+    if (!user?.id || !profile?.user_id) {
+      Alert.alert('Error', 'You must be logged in');
+      return;
+    }
+
+    setUpdatingProfile(true);
+    let profilePicUrl = profile.profile_pic || null;
+
+    try {
+      // Upload profile picture if one was selected
+      if (selectedProfilePic) {
+        setUploadingImage(true);
+        try {
+          profilePicUrl = await uploadImageToStorage(
+            selectedProfilePic,
+            'Photos', // Use 'Photos' bucket for profile pictures
+            user.id
+          );
+        } catch (uploadError: any) {
+          console.error('Error uploading profile picture:', uploadError);
+          Alert.alert('Error', uploadError.message || 'Failed to upload profile picture');
+          setUpdatingProfile(false);
+          setUploadingImage(false);
+          return;
+        } finally {
+          setUploadingImage(false);
+        }
+      }
+
+      // Update profile with all fields including new profile picture URL
+      const { success, error } = await updateProfile(profile.user_id, {
+        username: editUsername.trim() || null,
+        first_name: editFirstName.trim() || null,
+        last_name: editLastName.trim() || null,
+        bio: editBio.trim() || null,
+        profile_pic: profilePicUrl,
+      });
+
+      if (error) {
+        Alert.alert('Error', error.message || 'Failed to update profile');
+      } else if (success) {
+        Alert.alert('Success', 'Profile updated successfully');
+        setShowEditModal(false);
+        setSelectedProfilePic(null);
+        // Refresh profile data
+        await refreshProfile();
+      } else {
+        Alert.alert('Error', 'Failed to update profile');
+      }
+    } catch (err: any) {
+      console.error('Error updating profile:', err);
+      Alert.alert('Error', err.message || 'An unexpected error occurred');
+    } finally {
+      setUpdatingProfile(false);
+    }
+  };
 
   // Handle delete camera
   const handleDeleteCamera = async (userCameraId: number) => {
@@ -479,6 +598,7 @@ export default function ProfileScreen() {
                 flex: 1,
                 marginRight: 8,
               }]}
+              onPress={handleOpenEditModal}
             >
               <Text style={[styles.editButtonText, { color: colors.text }]}>
                 Edit profile
@@ -845,6 +965,151 @@ export default function ProfileScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Edit Profile Modal */}
+      <Modal
+        visible={showEditModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowEditModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Edit Profile</Text>
+              <TouchableOpacity onPress={() => setShowEditModal(false)}>
+                <FontAwesome name="times" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.editForm} showsVerticalScrollIndicator={false}>
+              {/* Profile Picture Section */}
+              <View style={styles.profilePicSection}>
+                <Text style={[styles.label, { color: colors.text }]}>Profile Picture</Text>
+                <View style={styles.profilePicContainer}>
+                  <Image
+                    source={{ 
+                      uri: selectedProfilePic || profile?.profile_pic || 'https://via.placeholder.com/100' 
+                    }}
+                    style={[styles.editProfilePicture, { borderColor: colors.border }]}
+                  />
+                  <TouchableOpacity
+                    style={[styles.changePicButton, { backgroundColor: colors.secondaryBackground }]}
+                    onPress={handlePickProfilePicture}
+                    disabled={uploadingImage || updatingProfile}
+                  >
+                    {uploadingImage ? (
+                      <ActivityIndicator size="small" color={colors.tint} />
+                    ) : (
+                      <>
+                        <FontAwesome name="camera" size={16} color={colors.text} />
+                        <Text style={[styles.changePicText, { color: colors.text }]}>
+                          {selectedProfilePic ? 'Change' : 'Add'} Photo
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                  {selectedProfilePic && (
+                    <TouchableOpacity
+                      style={[styles.removePicButton, { backgroundColor: colors.secondaryBackground }]}
+                      onPress={() => setSelectedProfilePic(null)}
+                      disabled={uploadingImage || updatingProfile}
+                    >
+                      <FontAwesome name="times" size={14} color={colors.text} />
+                      <Text style={[styles.removePicText, { color: colors.text }]}>Remove</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+
+              <Text style={[styles.label, { color: colors.text }]}>Username</Text>
+              <TextInput
+                style={[styles.editInput, {
+                  backgroundColor: colors.secondaryBackground,
+                  color: colors.text,
+                  borderColor: colors.border
+                }]}
+                placeholder="Username"
+                placeholderTextColor={colors.tabIconDefault}
+                value={editUsername}
+                onChangeText={setEditUsername}
+                autoCapitalize="none"
+              />
+
+              <Text style={[styles.label, { color: colors.text }]}>First Name</Text>
+              <TextInput
+                style={[styles.editInput, {
+                  backgroundColor: colors.secondaryBackground,
+                  color: colors.text,
+                  borderColor: colors.border
+                }]}
+                placeholder="First Name"
+                placeholderTextColor={colors.tabIconDefault}
+                value={editFirstName}
+                onChangeText={setEditFirstName}
+              />
+
+              <Text style={[styles.label, { color: colors.text }]}>Last Name</Text>
+              <TextInput
+                style={[styles.editInput, {
+                  backgroundColor: colors.secondaryBackground,
+                  color: colors.text,
+                  borderColor: colors.border
+                }]}
+                placeholder="Last Name"
+                placeholderTextColor={colors.tabIconDefault}
+                value={editLastName}
+                onChangeText={setEditLastName}
+              />
+
+              <Text style={[styles.label, { color: colors.text }]}>Bio</Text>
+              <TextInput
+                style={[styles.editInput, styles.bioInput, {
+                  backgroundColor: colors.secondaryBackground,
+                  color: colors.text,
+                  borderColor: colors.border
+                }]}
+                placeholder="Tell us about yourself..."
+                placeholderTextColor={colors.tabIconDefault}
+                value={editBio}
+                onChangeText={setEditBio}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+
+              <View style={styles.editButtonRow}>
+                <TouchableOpacity
+                  style={[styles.cancelButton, {
+                    backgroundColor: colors.secondaryBackground,
+                    borderColor: colors.border
+                  }]}
+                  onPress={() => setShowEditModal(false)}
+                  disabled={updatingProfile}
+                >
+                  <Text style={[styles.cancelButtonText, { color: colors.text }]}>
+                    Cancel
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.saveButton, {
+                    backgroundColor: colors.tint,
+                    opacity: updatingProfile ? 0.6 : 1
+                  }]}
+                  onPress={handleSaveProfile}
+                  disabled={updatingProfile}
+                >
+                  {updatingProfile ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.saveButtonText}>Save</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1057,5 +1322,93 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     textAlign: 'center',
     paddingVertical: 12,
+  },
+  editForm: {
+    flex: 1,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+    marginTop: 16,
+  },
+  editInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    minHeight: 50,
+  },
+  bioInput: {
+    minHeight: 100,
+    maxHeight: 150,
+  },
+  editButtonRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 24,
+    marginBottom: 20,
+  },
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  saveButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  profilePicSection: {
+    marginBottom: 8,
+  },
+  profilePicContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  editProfilePicture: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 2,
+    marginBottom: 12,
+  },
+  changePicButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    gap: 8,
+  },
+  changePicText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  removePicButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    gap: 6,
+    marginTop: 8,
+  },
+  removePicText: {
+    fontSize: 12,
+    fontWeight: '500',
   },
 });

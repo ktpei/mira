@@ -56,7 +56,7 @@ export async function uploadImageToStorage(
       if (error.message.includes('row-level security')) {
         throw new Error(
           'Storage permission denied. Please ensure:\n' +
-          '1. The "posts" bucket exists in Supabase Storage\n' +
+          `1. The "${bucketName}" bucket exists in Supabase Storage\n` +
           '2. Storage policies are set up (run setupStoragePolicies.sql)\n' +
           '3. You are logged in'
         );

@@ -1,4 +1,4 @@
-import { executeSQLFunction } from './supabase';
+import { executeSQLFunction, supabase } from './supabase';
 
 export interface UserProfile {
   user_id: string | null;
@@ -246,6 +246,50 @@ export async function unfollow(
     return {
       success: false,
       error: { message: err.message || 'Failed to unfollow user' },
+    };
+  }
+}
+
+/**
+ * Update user profile
+ * 
+ * @param userId - UUID of the user
+ * @param updates - Object with profile fields to update
+ * @returns Result with success status
+ */
+export async function updateProfile(
+  userId: string,
+  updates: {
+    username?: string | null;
+    first_name?: string | null;
+    last_name?: string | null;
+    bio?: string | null;
+    profile_pic?: string | null;
+  }
+): Promise<{
+  success: boolean;
+  error: any;
+}> {
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Error updating profile:', error);
+      return { success: false, error };
+    }
+
+    return { success: true, error: null };
+  } catch (err: any) {
+    console.error('Unexpected error updating profile:', err);
+    return {
+      success: false,
+      error: { message: err.message || 'Failed to update profile' },
     };
   }
 }
