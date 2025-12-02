@@ -1,6 +1,7 @@
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/src/components/useColorScheme';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Alert, Animated, Dimensions, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -62,6 +63,7 @@ export default function PostFeedItem({
 }: PostFeedItemProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const router = useRouter();
   const scrollViewRef = useRef<ScrollView>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isEquipmentExpanded, setIsEquipmentExpanded] = useState(false);
@@ -155,7 +157,17 @@ export default function PostFeedItem({
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* User Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <View style={styles.userInfo}>
+        <TouchableOpacity 
+          style={styles.userInfo}
+          onPress={() => {
+            if (user_id) {
+              router.push({
+                pathname: '/screens/user-profile',
+                params: { userId: user_id }
+              });
+            }
+          }}
+        >
           <Image
             source={{ 
               uri: profile_pic || 'https://via.placeholder.com/40' 
@@ -165,7 +177,7 @@ export default function PostFeedItem({
           <Text style={[styles.username, { color: colors.text }]}>
             {displayName}
           </Text>
-        </View>
+        </TouchableOpacity>
         {isOwnPost && (
           <TouchableOpacity onPress={handleDeletePress} style={styles.deleteButton}>
             <FontAwesome
