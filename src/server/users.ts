@@ -251,6 +251,114 @@ export async function unfollow(
 }
 
 /**
+ * Create a new user profile
+ * 
+ * @param userId - UUID of the user from auth.users
+ * @param username - Optional username (will be generated from email if not provided)
+ * @param email - User's email (used to generate username if needed)
+ * @returns Result with success status
+ */
+export async function createProfile(
+  userId: string,
+  email: string,
+  username?: string
+): Promise<{
+  success: boolean;
+  error: any;
+}> {
+  try {
+    console.log('Creating profile for user:', userId, 'email:', email, 'username:', username);
+    
+    // Generate username from email if not provided
+    let finalUsername = username?.trim();
+    if (!finalUsername || finalUsername.length === 0) {
+      // Extract username from email (part before @)
+      const emailUsername = email.split('@')[0].toLowerCase();
+      // Remove any non-alphanumeric characters and ensure it's at least 3 chars
+      const cleanUsername = emailUsername.replace(/[^a-z0-9]/g, '').substring(0, 20);
+      finalUsername = cleanUsername.length >= 3 ? cleanUsername : `user${Date.now().toString().slice(-6)}`;
+    }
+
+    // Ensure username meets minimum length requirement (3 chars per schema)
+    if (finalUsername.length < 3) {
+      finalUsername = `user${Date.now().toString().slice(-6)}`;
+    }
+
+    console.log('Generated username:', finalUsername);
+
+    // Check if username already exists, if so append numbers
+    let uniqueUsername = finalUsername;
+    let attempts = 0;
+    while (attempts < 10) {
+      const { data: existing, error: checkError } = await supabase
+        .from('profiles')
+        .select('user_id')
+        .eq('username', uniqueUsername)
+        .maybeSingle(); // Use maybeSingle() instead of single() to avoid errors
+
+      if (checkError) {
+        console.error('Error checking username uniqueness:', checkError);
+        // If it's a permission error, we'll try to insert anyway
+        if (!checkError.message?.includes('permission') && !checkError.message?.includes('row-level security')) {
+          break;
+        }
+      }
+
+      if (!existing) {
+        break; // Username is available
+      }
+
+      // Username exists, append random numbers
+      uniqueUsername = `${finalUsername}${Math.floor(Math.random() * 10000)}`;
+      attempts++;
+      console.log(`Username ${finalUsername} exists, trying: ${uniqueUsername}`);
+    }
+
+    console.log('Final unique username:', uniqueUsername);
+
+    // Insert the profile
+    const { data: insertData, error: insertError } = await supabase
+      .from('profiles')
+      .insert({
+        user_id: userId,
+        username: uniqueUsername,
+        updated_at: new Date().toISOString(),
+      })
+      .select();
+
+    if (insertError) {
+      console.error('Error creating profile - Full error details:', {
+        message: insertError.message,
+        details: insertError.details,
+        hint: insertError.hint,
+        code: insertError.code,
+      });
+      return { 
+        success: false, 
+        error: {
+          message: insertError.message || 'Failed to create profile',
+          details: insertError.details,
+          hint: insertError.hint,
+          code: insertError.code,
+        }
+      };
+    }
+
+    console.log('Profile created successfully:', insertData);
+    return { success: true, error: null };
+  } catch (err: any) {
+    console.error('Unexpected error creating profile:', err);
+    return {
+      success: false,
+      error: { 
+        message: err.message || 'Failed to create profile',
+        stack: err.stack,
+      },
+    };
+  }
+}
+
+/**
  * Update user profile
  * 
  * @param userId - UUID of the user
