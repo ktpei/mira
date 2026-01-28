@@ -1,6 +1,6 @@
 # Mira
 
-Mira is a social photography app inspired by Strava, designed for photographers to record, visualize, and share their photo sessions. Instead of tracking workouts, Mira maps photography activity, allowing users to upload photos with embedded GPS data, view popular shooting spots through an interactive heatmap, and explore others’ photo sessions by location. Each post captures not just images but relevant metadata like weather, camera gear, and settings. With a social feed, likes, comments, and personalized profiles, Mira connects photographers through shared exploration and inspiration.
+Mira is a social photography app inspired by Strava, designed for photographers to record, visualize, and share their photo sessions. Instead of tracking workouts, Mira maps photography activity, allowing users to upload photos with embedded GPS data, view popular shooting spots through an interactive heatmap, and explore others’ photo sessions by location. Each post also captures relevant metadata like weather, camera gear, and settings. With a social feed, likes, comments, and personalized profiles, Mira connects photographers through shared exploration and inspiration.
 
 ## Prerequisites
 
@@ -54,8 +54,4 @@ This will start the Expo development server. You can then:
 
 1. **IOS build issues**: Make sure you have ios simulator in Xcode -> settings -> components
 
-## Contributing
-
-1. Create a feature branch
-2. Make your changes
 
